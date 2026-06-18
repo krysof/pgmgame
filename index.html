@@ -928,10 +928,13 @@
 				top: calc(max(54px, env(safe-area-inset-top)) + 8px) !important;
 				transform: none !important;
 			}
-			body.pgmgame-landscape.pgmgame-pseudo-fullscreen .ejs_virtualGamepad_button,
-			body.pgmgame-landscape.pgmgame-pseudo-fullscreen #pgmgame-toolbar button {
-				writing-mode: vertical-rl;
-				text-orientation: mixed;
+			body.pgmgame-landscape.pgmgame-pseudo-fullscreen .pgmgame-rotate-label {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				transform: rotate(90deg);
+				transform-origin: center center;
+				white-space: nowrap;
 			}
 		}
 		@media (min-width: 900px) and (pointer: fine) {
@@ -1030,7 +1033,7 @@
 		const basePath = window.location.pathname.endsWith("/")
 			? window.location.pathname
 			: window.location.pathname.slice(0, window.location.pathname.lastIndexOf("/") + 1);
-		const siteVersion = "20260618.20";
+		const siteVersion = "20260618.21";
 		window.PGMGAME_VERSION = siteVersion;
 		const isMobileMode = /android|bb\d+|meego.+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile|opera m(ob|in)i|palm|phone|p(ixi|re)\/|plucker|pocket|psp|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|ipad|playbook|silk/i.test(navigator.userAgent || "")
 			|| (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
@@ -1107,6 +1110,23 @@
 		const removeLoading = () => {
 			const loading = document.getElementById("loading");
 			if (loading) loading.remove();
+		};
+		const wrapRotatingLabel = (element) => {
+			if (!element || element.querySelector(".pgmgame-rotate-label")) return;
+			const text = element.textContent;
+			element.textContent = "";
+			const label = document.createElement("span");
+			label.className = "pgmgame-rotate-label";
+			label.textContent = text;
+			element.appendChild(label);
+		};
+		const setRotatingLabelText = (element, text) => {
+			const label = element && element.querySelector(".pgmgame-rotate-label");
+			if (label) {
+				label.textContent = text;
+			} else if (element) {
+				element.textContent = text;
+			}
 		};
 		let loadingWatchTimer = null;
 		const stopLoadingWatch = () => {
@@ -1673,6 +1693,7 @@
 				coin: controls.querySelector(".ejs_virtualGamepad_button.b_coin"),
 				start: controls.querySelector(".ejs_virtualGamepad_button.b_start")
 			};
+			["c", "d", "a", "b", "coin", "start"].forEach((key) => wrapRotatingLabel(controlTargets[key]));
 			const layoutStoragePrefix = "pgmgame-controls-layout-v3";
 			const getLayoutOrientation = () => getSelectedOrientation();
 			const getLayoutStorageKey = (orientation) => `${layoutStoragePrefix}-${orientation}`;
@@ -1741,7 +1762,7 @@
 				if (resetLayoutButton) resetLayoutButton.hidden = !enabled;
 				if (copyLayoutButton) copyLayoutButton.hidden = !enabled;
 				if (pasteLayoutButton) pasteLayoutButton.hidden = !enabled;
-				layoutButton.textContent = enabled ? "完成" : "布局";
+				setRotatingLabelText(layoutButton, enabled ? "完成" : "布局");
 			};
 			const resetControlLayout = () => {
 				controlLayout = cloneDefaultControlLayout();
@@ -1906,40 +1927,47 @@
 			menuToggle.id = "pgmgame-toolbar-menu";
 			menuToggle.type = "button";
 			menuToggle.textContent = "菜单";
+			wrapRotatingLabel(menuToggle);
 			toolbar.appendChild(menuToggle);
 
 			const toggle = document.createElement("button");
 			toggle.id = "pgmgame-controls-toggle";
 			toggle.type = "button";
 			toggle.textContent = "隐藏";
+			wrapRotatingLabel(toggle);
 			toolbar.appendChild(toggle);
 			const layoutButton = document.createElement("button");
 			layoutButton.id = "pgmgame-layout-toggle";
 			layoutButton.type = "button";
 			layoutButton.textContent = "布局";
+			wrapRotatingLabel(layoutButton);
 			toolbar.appendChild(layoutButton);
 			const resetLayoutButton = document.createElement("button");
 			resetLayoutButton.id = "pgmgame-layout-reset";
 			resetLayoutButton.type = "button";
 			resetLayoutButton.textContent = "复位";
+			wrapRotatingLabel(resetLayoutButton);
 			resetLayoutButton.hidden = true;
 			toolbar.appendChild(resetLayoutButton);
 			const copyLayoutButton = document.createElement("button");
 			copyLayoutButton.id = "pgmgame-layout-copy";
 			copyLayoutButton.type = "button";
 			copyLayoutButton.textContent = "复制";
+			wrapRotatingLabel(copyLayoutButton);
 			copyLayoutButton.hidden = true;
 			toolbar.appendChild(copyLayoutButton);
 			const pasteLayoutButton = document.createElement("button");
 			pasteLayoutButton.id = "pgmgame-layout-paste";
 			pasteLayoutButton.type = "button";
 			pasteLayoutButton.textContent = "粘贴";
+			wrapRotatingLabel(pasteLayoutButton);
 			pasteLayoutButton.hidden = true;
 			toolbar.appendChild(pasteLayoutButton);
 			const cardButton = document.createElement("button");
 			cardButton.id = "pgmgame-card-toggle";
 			cardButton.type = "button";
 			cardButton.textContent = "卡片";
+			wrapRotatingLabel(cardButton);
 			toolbar.appendChild(cardButton);
 			cardButton.addEventListener("click", () => {
 				cardModal.hidden = false;
@@ -1954,7 +1982,7 @@
 				toolbar.classList.toggle("pgmgame-toolbar-mobile-fullscreen", mobileFullscreenMode);
 				if (!mobileFullscreenMode) {
 					toolbar.classList.remove("pgmgame-toolbar-expanded");
-					menuToggle.textContent = "菜单";
+					setRotatingLabelText(menuToggle, "菜单");
 				}
 				if (fullscreenMode) {
 					toolbar.style.left = "";
@@ -2078,7 +2106,7 @@
 			};
 			menuToggle.addEventListener("click", () => {
 				toolbar.classList.toggle("pgmgame-toolbar-expanded");
-				menuToggle.textContent = toolbar.classList.contains("pgmgame-toolbar-expanded") ? "收起" : "菜单";
+				setRotatingLabelText(menuToggle, toolbar.classList.contains("pgmgame-toolbar-expanded") ? "收起" : "菜单");
 			});
 			layoutButton.addEventListener("click", () => {
 				setLayoutEditing(!layoutEditing);
@@ -2136,7 +2164,7 @@
 
 			const setVisible = (visible) => {
 				controls.classList.toggle("pgmgame-controls-hidden", !visible);
-				toggle.textContent = visible ? "隐藏" : "操作";
+				setRotatingLabelText(toggle, visible ? "隐藏" : "操作");
 				localStorage.setItem("pgmgame-controls-visible", visible ? "1" : "0");
 			};
 			const saved = localStorage.getItem("pgmgame-controls-visible");
