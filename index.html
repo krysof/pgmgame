@@ -237,7 +237,9 @@
 			inset: 0;
 			width: 100vw;
 			height: 100dvh;
+			min-height: 0;
 			overflow: auto;
+			box-sizing: border-box;
 			z-index: 1990;
 		}
 		@media (orientation: portrait) {
@@ -254,8 +256,48 @@
 				top: 50%;
 				width: 100dvh;
 				height: 100vw;
+				max-width: 100dvh;
+				max-height: 100vw;
+				min-height: 0;
+				padding: 12px 18px;
 				transform: translate(-50%, -50%) rotate(90deg);
 				transform-origin: center center;
+			}
+			body.pgmgame-selecting.pgmgame-pseudo-fullscreen #pgmgame-home-panel {
+				width: min(1120px, calc(100dvh - 36px));
+				height: calc(100vw - 24px);
+				overflow: hidden;
+			}
+			body.pgmgame-selecting.pgmgame-pseudo-fullscreen #pgmgame-home-top {
+				display: flex;
+				align-items: center;
+				margin-bottom: 12px;
+			}
+			body.pgmgame-selecting.pgmgame-pseudo-fullscreen #pgmgame-home h1 {
+				font-size: clamp(22px, 5dvh, 34px);
+			}
+			body.pgmgame-selecting.pgmgame-pseudo-fullscreen #pgmgame-home-settings {
+				justify-content: flex-end;
+				margin-top: 0;
+			}
+			body.pgmgame-selecting.pgmgame-pseudo-fullscreen #pgmgame-game-list {
+				display: grid;
+				grid-auto-flow: column;
+				grid-auto-columns: min(26dvh, 150px);
+				grid-template-columns: none;
+				gap: 10px;
+				overflow-x: auto;
+				overflow-y: hidden;
+				padding-bottom: 8px;
+				max-width: calc(100dvh - 36px);
+				height: calc(100vw - 96px);
+			}
+			body.pgmgame-selecting.pgmgame-pseudo-fullscreen .pgmgame-game-card {
+				max-width: min(26dvh, 150px);
+			}
+			body.pgmgame-selecting.pgmgame-pseudo-fullscreen .pgmgame-game-card-title {
+				font-size: 13px;
+				padding: 8px 9px 10px;
 			}
 		}
 		.ejs_virtualGamepad_parent {
@@ -951,15 +993,18 @@
 		const basePath = window.location.pathname.endsWith("/")
 			? window.location.pathname
 			: window.location.pathname.slice(0, window.location.pathname.lastIndexOf("/") + 1);
-		const siteVersion = "20260618.15";
+		const siteVersion = "20260618.16";
 		window.PGMGAME_VERSION = siteVersion;
 		const isMobileMode = /android|bb\d+|meego.+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile|opera m(ob|in)i|palm|phone|p(ixi|re)\/|plucker|pocket|psp|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|ipad|playbook|silk/i.test(navigator.userAgent || "")
 			|| (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
 			|| (window.matchMedia && window.matchMedia("(any-pointer: coarse)").matches);
 		const isPortraitMode = () => window.matchMedia ? window.matchMedia("(orientation: portrait)").matches : window.innerHeight >= window.innerWidth;
+		const detectDeviceOrientation = () => isPortraitMode() ? "portrait" : "landscape";
 		const isFullscreenMode = () => document.body.classList.contains("pgmgame-pseudo-fullscreen") || !!document.fullscreenElement || !!document.webkitFullscreenElement;
+		const getSelectedOrientation = () => localStorage.getItem("pgmgame-orientation-mode") || detectDeviceOrientation();
 		const syncOrientationUi = () => {
-			const landscapeMode = (orientationSelect ? orientationSelect.value : localStorage.getItem("pgmgame-orientation") || "landscape") === "landscape";
+			if (orientationSelect) orientationSelect.value = getSelectedOrientation();
+			const landscapeMode = getSelectedOrientation() === "landscape";
 			document.body.classList.toggle("pgmgame-pseudo-fullscreen", landscapeMode);
 			window.scrollTo(0, landscapeMode ? 1 : 0);
 			window.dispatchEvent(new CustomEvent("pgmgame-orientation-ui-change", { detail: { landscape: landscapeMode } }));
@@ -992,11 +1037,12 @@
 		const getLanguageConfig = (value) => languageMap[normalizeLanguage(value)];
 		const selectedLanguage = normalizeLanguage(savedLanguage);
 		const selectedLanguageConfig = languageMap[selectedLanguage];
-		const savedOrientation = localStorage.getItem("pgmgame-orientation") || "landscape";
+		localStorage.removeItem("pgmgame-orientation");
+		const savedOrientation = getSelectedOrientation();
 		const orientationSelect = document.getElementById("pgmgame-orientation-select");
 		if (orientationSelect) orientationSelect.value = savedOrientation;
 		orientationSelect?.addEventListener("change", () => {
-			localStorage.setItem("pgmgame-orientation", orientationSelect.value);
+			localStorage.setItem("pgmgame-orientation-mode", orientationSelect.value);
 			syncOrientationUi();
 		});
 		const savedVideoFilter = localStorage.getItem("pgmgame-video-filter") || "off";
@@ -1418,7 +1464,6 @@
 		const startGame = async (game) => {
 			if (document.body.classList.contains("pgmgame-loading-game")) return;
 			activeGame = game;
-			localStorage.setItem("pgmgame-orientation", orientationSelect ? orientationSelect.value : "landscape");
 			localStorage.setItem("pgmgame-video-filter", filterSelect ? filterSelect.value : "off");
 			document.body.classList.add("pgmgame-loading-game");
 			document.body.classList.remove("pgmgame-selecting");
@@ -1590,7 +1635,7 @@
 				start: controls.querySelector(".ejs_virtualGamepad_button.b_start")
 			};
 			const layoutStoragePrefix = "pgmgame-controls-layout-v3";
-			const getLayoutOrientation = () => (orientationSelect && orientationSelect.value === "portrait") ? "portrait" : "landscape";
+			const getLayoutOrientation = () => getSelectedOrientation();
 			const getLayoutStorageKey = (orientation) => `${layoutStoragePrefix}-${orientation}`;
 			const defaultControlLayout = {
 				dpad: { x: 0, y: 0, scale: 1 },
@@ -1966,7 +2011,7 @@
 			};
 			const enterPseudoFullscreen = () => {
 				if (orientationSelect) orientationSelect.value = "landscape";
-				localStorage.setItem("pgmgame-orientation", "landscape");
+				localStorage.setItem("pgmgame-orientation-mode", "landscape");
 				syncOrientationUi();
 				lockLandscape();
 				syncVideoFilter();
@@ -1976,7 +2021,7 @@
 			};
 			const exitPseudoFullscreen = () => {
 				if (orientationSelect) orientationSelect.value = "portrait";
-				localStorage.setItem("pgmgame-orientation", "portrait");
+				localStorage.setItem("pgmgame-orientation-mode", "portrait");
 				syncOrientationUi();
 				unlockOrientation();
 				syncVideoFilter();
@@ -2037,12 +2082,16 @@
 				syncFullscreenLabel();
 			});
 			window.addEventListener("resize", () => {
+				if (!localStorage.getItem("pgmgame-orientation-mode")) syncOrientationUi();
 				if (isFullscreenMode()) {
 					window.scrollTo(0, 1);
 				}
 				syncVideoFilter();
 				syncControlLayoutOrientation();
 				updateToolbarPosition();
+			});
+			window.addEventListener("orientationchange", () => {
+				if (!localStorage.getItem("pgmgame-orientation-mode")) setTimeout(syncOrientationUi, 250);
 			});
 
 			const setVisible = (visible) => {
@@ -2058,6 +2107,12 @@
 		};
 		renderGameHome();
 		syncOrientationUi();
+		window.addEventListener("resize", () => {
+			if (!localStorage.getItem("pgmgame-orientation-mode")) syncOrientationUi();
+		});
+		window.addEventListener("orientationchange", () => {
+			if (!localStorage.getItem("pgmgame-orientation-mode")) setTimeout(syncOrientationUi, 250);
+		});
 	</script>
 </body>
 </html>
