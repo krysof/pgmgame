@@ -1025,7 +1025,7 @@
 		const basePath = window.location.pathname.endsWith("/")
 			? window.location.pathname
 			: window.location.pathname.slice(0, window.location.pathname.lastIndexOf("/") + 1);
-		const siteVersion = "20260618.17";
+		const siteVersion = "20260618.19";
 		window.PGMGAME_VERSION = siteVersion;
 		const isMobileMode = /android|bb\d+|meego.+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile|opera m(ob|in)i|palm|phone|p(ixi|re)\/|plucker|pocket|psp|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|ipad|playbook|silk/i.test(navigator.userAgent || "")
 			|| (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
@@ -1660,7 +1660,7 @@
 			toolbar.id = "pgmgame-toolbar";
 			document.body.appendChild(toolbar);
 			const controlTargets = {
-				dpad: controls.querySelector(".ejs_dpad_main"),
+				dpad: controls.querySelector(".cs_pgmgame.b_dpad") || controls.querySelector(".ejs_dpad_main"),
 				c: controls.querySelector(".ejs_virtualGamepad_button.b_c"),
 				d: controls.querySelector(".ejs_virtualGamepad_button.b_d"),
 				a: controls.querySelector(".ejs_virtualGamepad_button.b_a"),
