@@ -928,6 +928,11 @@
 				top: calc(max(54px, env(safe-area-inset-top)) + 8px) !important;
 				transform: none !important;
 			}
+			body.pgmgame-landscape.pgmgame-pseudo-fullscreen .ejs_virtualGamepad_button,
+			body.pgmgame-landscape.pgmgame-pseudo-fullscreen #pgmgame-toolbar button {
+				writing-mode: vertical-rl;
+				text-orientation: mixed;
+			}
 		}
 		@media (min-width: 900px) and (pointer: fine) {
 			.ejs_virtualGamepad_parent {
@@ -1025,7 +1030,7 @@
 		const basePath = window.location.pathname.endsWith("/")
 			? window.location.pathname
 			: window.location.pathname.slice(0, window.location.pathname.lastIndexOf("/") + 1);
-		const siteVersion = "20260618.19";
+		const siteVersion = "20260618.20";
 		window.PGMGAME_VERSION = siteVersion;
 		const isMobileMode = /android|bb\d+|meego.+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile|opera m(ob|in)i|palm|phone|p(ixi|re)\/|plucker|pocket|psp|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|ipad|playbook|silk/i.test(navigator.userAgent || "")
 			|| (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
