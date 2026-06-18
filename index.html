@@ -207,6 +207,12 @@
 		#pgmgame-layout-reset[hidden] {
 			display: none !important;
 		}
+		#pgmgame-layout-copy[hidden] {
+			display: none !important;
+		}
+		#pgmgame-layout-paste[hidden] {
+			display: none !important;
+		}
 		#pgmgame-toolbar option {
 			color: #111;
 		}
@@ -791,10 +797,18 @@
 			#pgmgame-toolbar.pgmgame-toolbar-mobile-fullscreen:not(.pgmgame-toolbar-expanded) #pgmgame-controls-toggle,
 			#pgmgame-toolbar.pgmgame-toolbar-mobile-fullscreen:not(.pgmgame-toolbar-expanded) #pgmgame-layout-toggle,
 			#pgmgame-toolbar.pgmgame-toolbar-mobile-fullscreen:not(.pgmgame-toolbar-expanded) #pgmgame-layout-reset,
+			#pgmgame-toolbar.pgmgame-toolbar-mobile-fullscreen:not(.pgmgame-toolbar-expanded) #pgmgame-layout-copy,
+			#pgmgame-toolbar.pgmgame-toolbar-mobile-fullscreen:not(.pgmgame-toolbar-expanded) #pgmgame-layout-paste,
 			#pgmgame-toolbar.pgmgame-toolbar-mobile-fullscreen:not(.pgmgame-toolbar-expanded) #pgmgame-card-toggle {
 				display: none;
 			}
 			#pgmgame-toolbar.pgmgame-toolbar-mobile-fullscreen:not(.pgmgame-toolbar-expanded).pgmgame-layout-editing-toolbar #pgmgame-layout-reset {
+				display: block;
+			}
+			#pgmgame-toolbar.pgmgame-toolbar-mobile-fullscreen:not(.pgmgame-toolbar-expanded).pgmgame-layout-editing-toolbar #pgmgame-layout-copy {
+				display: block;
+			}
+			#pgmgame-toolbar.pgmgame-toolbar-mobile-fullscreen:not(.pgmgame-toolbar-expanded).pgmgame-layout-editing-toolbar #pgmgame-layout-paste {
 				display: block;
 			}
 			body.pgmgame-pseudo-fullscreen .ejs_virtualGamepad_parent {
@@ -921,7 +935,7 @@
 		const basePath = window.location.pathname.endsWith("/")
 			? window.location.pathname
 			: window.location.pathname.slice(0, window.location.pathname.lastIndexOf("/") + 1);
-		const siteVersion = "20260618.9";
+		const siteVersion = "20260618.10";
 		window.PGMGAME_VERSION = siteVersion;
 		const isMobileMode = /android|bb\d+|meego.+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile|opera m(ob|in)i|palm|phone|p(ixi|re)\/|plucker|pocket|psp|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|ipad|playbook|silk/i.test(navigator.userAgent || "")
 			|| (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
@@ -1533,7 +1547,9 @@
 				coin: controls.querySelector(".ejs_virtualGamepad_button.b_coin"),
 				start: controls.querySelector(".ejs_virtualGamepad_button.b_start")
 			};
-			const layoutStorageKey = "pgmgame-controls-layout-v2";
+			const layoutStoragePrefix = "pgmgame-controls-layout-v3";
+			const getLayoutOrientation = () => isPortraitMode() ? "portrait" : "landscape";
+			const getLayoutStorageKey = (orientation) => `${layoutStoragePrefix}-${orientation}`;
 			const defaultControlLayout = {
 				dpad: { x: 0, y: 0, scale: 1 },
 				c: { x: 0, y: 0, scale: 1 },
@@ -1543,13 +1559,29 @@
 				coin: { x: 0, y: 0, scale: 1 },
 				start: { x: 0, y: 0, scale: 1 }
 			};
-			let controlLayout = (() => {
+			const cloneDefaultControlLayout = () => JSON.parse(JSON.stringify(defaultControlLayout));
+			const getCurrentLayoutBasis = () => {
+				const rect = controls.getBoundingClientRect();
+				return {
+					width: Math.max(1, Math.round(rect.width || window.innerWidth || 1)),
+					height: Math.max(1, Math.round(rect.height || window.innerHeight || 1))
+				};
+			};
+			const readControlLayoutRecord = (orientation) => {
 				try {
-					return { ...defaultControlLayout, ...JSON.parse(localStorage.getItem(layoutStorageKey) || "{}") };
+					const saved = JSON.parse(localStorage.getItem(getLayoutStorageKey(orientation)) || "{}");
+					const savedLayout = saved.layout || saved;
+					return {
+						basis: saved.basis || null,
+						layout: { ...cloneDefaultControlLayout(), ...savedLayout }
+					};
 				} catch (e) {
-					return { ...defaultControlLayout };
+					return { basis: null, layout: cloneDefaultControlLayout() };
 				}
-			})();
+			};
+			let activeLayoutOrientation = getLayoutOrientation();
+			let activeLayoutRecord = readControlLayoutRecord(activeLayoutOrientation);
+			let controlLayout = activeLayoutRecord.layout;
 			let layoutEditing = false;
 			let layoutDrag = null;
 			const normalizeLayoutItem = (item) => ({
@@ -1558,7 +1590,12 @@
 				scale: Math.max(.55, Math.min(1.85, Number(item && item.scale) || 1))
 			});
 			const saveControlLayout = () => {
-				localStorage.setItem(layoutStorageKey, JSON.stringify(controlLayout));
+				localStorage.setItem(getLayoutStorageKey(activeLayoutOrientation), JSON.stringify({
+					version: 1,
+					orientation: activeLayoutOrientation,
+					basis: getCurrentLayoutBasis(),
+					layout: controlLayout
+				}));
 			};
 			const applyControlLayout = () => {
 				Object.entries(controlTargets).forEach(([key, element]) => {
@@ -1576,13 +1613,112 @@
 				document.body.classList.toggle("pgmgame-layout-editing", enabled);
 				toolbar.classList.toggle("pgmgame-layout-editing-toolbar", enabled);
 				if (resetLayoutButton) resetLayoutButton.hidden = !enabled;
+				if (copyLayoutButton) copyLayoutButton.hidden = !enabled;
+				if (pasteLayoutButton) pasteLayoutButton.hidden = !enabled;
 				layoutButton.textContent = enabled ? "完成" : "布局";
 			};
 			const resetControlLayout = () => {
-				controlLayout = JSON.parse(JSON.stringify(defaultControlLayout));
-				localStorage.removeItem(layoutStorageKey);
+				controlLayout = cloneDefaultControlLayout();
+				localStorage.removeItem(getLayoutStorageKey(activeLayoutOrientation));
 				applyControlLayout();
 				setLayoutEditing(false);
+			};
+			const syncControlLayoutOrientation = () => {
+				const nextOrientation = getLayoutOrientation();
+				if (nextOrientation === activeLayoutOrientation) return;
+				if (layoutDrag) {
+					saveControlLayout();
+					layoutDrag = null;
+				}
+				saveControlLayout();
+				activeLayoutOrientation = nextOrientation;
+				activeLayoutRecord = readControlLayoutRecord(activeLayoutOrientation);
+				controlLayout = activeLayoutRecord.layout;
+				applyControlLayout();
+			};
+			const getRelativeLayoutExport = (orientation) => {
+				const record = orientation === activeLayoutOrientation
+					? { basis: getCurrentLayoutBasis(), layout: controlLayout }
+					: readControlLayoutRecord(orientation);
+				const basis = record.basis || getCurrentLayoutBasis();
+				return Object.fromEntries(Object.entries(defaultControlLayout).map(([key]) => {
+					const item = normalizeLayoutItem(record.layout[key]);
+					return [key, {
+						rx: Number((item.x / basis.width).toFixed(4)),
+						ry: Number((item.y / basis.height).toFixed(4)),
+						scale: Number(item.scale.toFixed(3))
+					}];
+				}));
+			};
+			const parseControlLayoutCode = (text) => {
+				const source = String(text || "").trim();
+				const firstBrace = source.indexOf("{");
+				const lastBrace = source.lastIndexOf("}");
+				if (firstBrace < 0 || lastBrace <= firstBrace) throw new Error("没有找到布局对象。");
+				const parsed = JSON.parse(source.slice(firstBrace, lastBrace + 1));
+				if (!parsed || (!parsed.landscape && !parsed.portrait)) throw new Error("布局代码格式不正确。");
+				return parsed;
+			};
+			const relativeLayoutToPixels = (relativeLayout, basis) => {
+				const nextLayout = cloneDefaultControlLayout();
+				Object.keys(defaultControlLayout).forEach((key) => {
+					const item = relativeLayout && relativeLayout[key];
+					if (!item) return;
+					nextLayout[key] = normalizeLayoutItem({
+						x: Number(item.rx) * basis.width,
+						y: Number(item.ry) * basis.height,
+						scale: item.scale
+					});
+				});
+				return nextLayout;
+			};
+			const saveImportedControlLayout = (orientation, relativeLayout) => {
+				if (!relativeLayout) return;
+				const basis = getCurrentLayoutBasis();
+				const importedLayout = relativeLayoutToPixels(relativeLayout, basis);
+				localStorage.setItem(getLayoutStorageKey(orientation), JSON.stringify({
+					version: 1,
+					orientation,
+					basis,
+					layout: importedLayout
+				}));
+				if (orientation === activeLayoutOrientation) {
+					controlLayout = importedLayout;
+					applyControlLayout();
+				}
+			};
+			const pasteControlLayoutCode = async () => {
+				let text = "";
+				try {
+					if (navigator.clipboard && navigator.clipboard.readText) text = await navigator.clipboard.readText();
+				} catch (e) {}
+				if (!text) text = window.prompt("粘贴布局代码：", "") || "";
+				if (!text.trim()) return;
+				try {
+					const imported = parseControlLayoutCode(text);
+					saveImportedControlLayout("landscape", imported.landscape);
+					saveImportedControlLayout("portrait", imported.portrait);
+					activeLayoutRecord = readControlLayoutRecord(activeLayoutOrientation);
+					controlLayout = activeLayoutRecord.layout;
+					applyControlLayout();
+					alert("布局已粘贴并保存。");
+				} catch (e) {
+					alert(`布局代码无效：${e.message || e}`);
+				}
+			};
+			const copyControlLayoutCode = async () => {
+				saveControlLayout();
+				const exportCode = `const pgmgameDefaultControlLayouts = ${JSON.stringify({
+					unit: "relative-to-virtual-gamepad",
+					landscape: getRelativeLayoutExport("landscape"),
+					portrait: getRelativeLayoutExport("portrait")
+				}, null, "\t")};`;
+				try {
+					await navigator.clipboard.writeText(exportCode);
+					alert("横版/竖版相对布局代码已复制。");
+				} catch (e) {
+					window.prompt("复制布局代码：", exportCode);
+				}
 			};
 			const endLayoutDrag = () => {
 				if (!layoutDrag) return;
@@ -1662,6 +1798,18 @@
 			resetLayoutButton.textContent = "复位";
 			resetLayoutButton.hidden = true;
 			toolbar.appendChild(resetLayoutButton);
+			const copyLayoutButton = document.createElement("button");
+			copyLayoutButton.id = "pgmgame-layout-copy";
+			copyLayoutButton.type = "button";
+			copyLayoutButton.textContent = "复制";
+			copyLayoutButton.hidden = true;
+			toolbar.appendChild(copyLayoutButton);
+			const pasteLayoutButton = document.createElement("button");
+			pasteLayoutButton.id = "pgmgame-layout-paste";
+			pasteLayoutButton.type = "button";
+			pasteLayoutButton.textContent = "粘贴";
+			pasteLayoutButton.hidden = true;
+			toolbar.appendChild(pasteLayoutButton);
 			const cardButton = document.createElement("button");
 			cardButton.id = "pgmgame-card-toggle";
 			cardButton.type = "button";
@@ -1807,6 +1955,12 @@
 			resetLayoutButton.addEventListener("click", () => {
 				resetControlLayout();
 			});
+			copyLayoutButton.addEventListener("click", () => {
+				copyControlLayoutCode();
+			});
+			pasteLayoutButton.addEventListener("click", () => {
+				pasteControlLayoutCode();
+			});
 			document.addEventListener("fullscreenchange", () => {
 				if (document.fullscreenElement || document.webkitFullscreenElement) {
 					document.body.classList.add("pgmgame-pseudo-fullscreen");
@@ -1816,6 +1970,7 @@
 					unlockOrientation();
 				}
 				syncVideoFilter();
+				syncControlLayoutOrientation();
 				syncFullscreenLabel();
 			});
 			document.addEventListener("webkitfullscreenchange", () => {
@@ -1827,6 +1982,7 @@
 					unlockOrientation();
 				}
 				syncVideoFilter();
+				syncControlLayoutOrientation();
 				syncFullscreenLabel();
 			});
 			window.addEventListener("resize", () => {
@@ -1834,6 +1990,7 @@
 					window.scrollTo(0, 1);
 				}
 				syncVideoFilter();
+				syncControlLayoutOrientation();
 				updateToolbarPosition();
 			});
 
