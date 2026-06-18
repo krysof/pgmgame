@@ -896,6 +896,38 @@
 				bottom: auto !important;
 				margin-left: 0 !important;
 			}
+			body.pgmgame-landscape.pgmgame-pseudo-fullscreen .ejs_virtualGamepad_parent {
+				left: auto !important;
+				top: auto !important;
+				inset: 0 !important;
+				width: 100vw !important;
+				height: 100dvh !important;
+				transform: none !important;
+			}
+			body.pgmgame-landscape.pgmgame-pseudo-fullscreen #pgmgame-stage .ejs_virtualGamepad_left {
+				left: max(14px, env(safe-area-inset-left)) !important;
+				right: auto !important;
+				top: auto !important;
+				bottom: max(14px, env(safe-area-inset-bottom)) !important;
+			}
+			body.pgmgame-landscape.pgmgame-pseudo-fullscreen #pgmgame-stage .ejs_virtualGamepad_right {
+				left: auto !important;
+				right: max(26px, env(safe-area-inset-right)) !important;
+				top: auto !important;
+				bottom: max(48px, env(safe-area-inset-bottom)) !important;
+			}
+			body.pgmgame-landscape.pgmgame-pseudo-fullscreen #pgmgame-stage .ejs_virtualGamepad_bottom {
+				left: 50% !important;
+				right: auto !important;
+				top: auto !important;
+				bottom: max(14px, env(safe-area-inset-bottom)) !important;
+				margin-left: calc(var(--pgm-center-width) * -.5) !important;
+			}
+			body.pgmgame-landscape.pgmgame-pseudo-fullscreen #pgmgame-toolbar.pgmgame-toolbar-mobile-fullscreen {
+				right: max(8px, env(safe-area-inset-right)) !important;
+				top: calc(max(54px, env(safe-area-inset-top)) + 8px) !important;
+				transform: none !important;
+			}
 		}
 		@media (min-width: 900px) and (pointer: fine) {
 			.ejs_virtualGamepad_parent {
@@ -993,7 +1025,7 @@
 		const basePath = window.location.pathname.endsWith("/")
 			? window.location.pathname
 			: window.location.pathname.slice(0, window.location.pathname.lastIndexOf("/") + 1);
-		const siteVersion = "20260618.16";
+		const siteVersion = "20260618.17";
 		window.PGMGAME_VERSION = siteVersion;
 		const isMobileMode = /android|bb\d+|meego.+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile|opera m(ob|in)i|palm|phone|p(ixi|re)\/|plucker|pocket|psp|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|ipad|playbook|silk/i.test(navigator.userAgent || "")
 			|| (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
@@ -1006,6 +1038,8 @@
 			if (orientationSelect) orientationSelect.value = getSelectedOrientation();
 			const landscapeMode = getSelectedOrientation() === "landscape";
 			document.body.classList.toggle("pgmgame-pseudo-fullscreen", landscapeMode);
+			document.body.classList.toggle("pgmgame-landscape", landscapeMode);
+			document.body.classList.toggle("pgmgame-portrait", !landscapeMode);
 			window.scrollTo(0, landscapeMode ? 1 : 0);
 			window.dispatchEvent(new CustomEvent("pgmgame-orientation-ui-change", { detail: { landscape: landscapeMode } }));
 		};
@@ -1910,7 +1944,8 @@
 			const updateToolbarPosition = () => {
 				const fullscreenMode = isFullscreenMode();
 				toolbar.classList.toggle("pgmgame-toolbar-fullscreen-edge", fullscreenMode);
-				const mobileFullscreenMode = fullscreenMode && isMobileMode && isPortraitMode();
+				const selectedPortraitMode = getSelectedOrientation() === "portrait";
+				const mobileFullscreenMode = fullscreenMode && isMobileMode && selectedPortraitMode;
 				toolbar.classList.toggle("pgmgame-toolbar-mobile-fullscreen", mobileFullscreenMode);
 				if (!mobileFullscreenMode) {
 					toolbar.classList.remove("pgmgame-toolbar-expanded");
@@ -1923,7 +1958,7 @@
 					toolbar.style.bottom = "";
 					toolbar.style.transform = "";
 					toolbar.style.width = "";
-					if (isMobileMode && isPortraitMode()) {
+					if (isMobileMode && selectedPortraitMode) {
 						toolbar.style.position = "fixed";
 						toolbar.style.left = "auto";
 						toolbar.style.right = "max(8px, env(safe-area-inset-right))";
@@ -1941,7 +1976,7 @@
 				const toolbarRect = toolbar.getBoundingClientRect();
 				const gap = 12;
 				toolbar.style.position = "fixed";
-				if (isMobileMode && isPortraitMode()) {
+				if (isMobileMode && selectedPortraitMode) {
 					toolbar.style.left = "50%";
 					toolbar.style.right = "auto";
 					toolbar.style.top = "auto";
