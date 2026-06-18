@@ -587,6 +587,14 @@
 		body.pgmgame-layout-editing .pgmgame-layout-handle {
 			display: block;
 		}
+		body.pgmgame-landscape.pgmgame-pseudo-fullscreen .pgmgame-rotate-label {
+			display: inline-flex !important;
+			align-items: center;
+			justify-content: center;
+			transform: rotate(90deg) !important;
+			transform-origin: center center !important;
+			white-space: nowrap;
+		}
 		.ejs_virtualGamepad_button {
 			width: var(--pgm-action-size) !important;
 			height: var(--pgm-action-size) !important;
@@ -928,14 +936,6 @@
 				top: calc(max(54px, env(safe-area-inset-top)) + 8px) !important;
 				transform: none !important;
 			}
-			body.pgmgame-landscape.pgmgame-pseudo-fullscreen .pgmgame-rotate-label {
-				display: inline-flex;
-				align-items: center;
-				justify-content: center;
-				transform: rotate(90deg);
-				transform-origin: center center;
-				white-space: nowrap;
-			}
 		}
 		@media (min-width: 900px) and (pointer: fine) {
 			.ejs_virtualGamepad_parent {
@@ -1033,7 +1033,7 @@
 		const basePath = window.location.pathname.endsWith("/")
 			? window.location.pathname
 			: window.location.pathname.slice(0, window.location.pathname.lastIndexOf("/") + 1);
-		const siteVersion = "20260618.21";
+		const siteVersion = "20260618.22";
 		window.PGMGAME_VERSION = siteVersion;
 		const isMobileMode = /android|bb\d+|meego.+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile|opera m(ob|in)i|palm|phone|p(ixi|re)\/|plucker|pocket|psp|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|ipad|playbook|silk/i.test(navigator.userAgent || "")
 			|| (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
