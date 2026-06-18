@@ -34,7 +34,7 @@ async function loadScript(file) {
     try {
         const script = resolvePath(file);
         const module = await import(script);
-        return module.default;
+        return module.default || window.EmulatorJS;
     } catch(e) {
         if (debug) console.error(e);
         const module = await filesMissing(file);
