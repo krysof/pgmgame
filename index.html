@@ -1033,7 +1033,7 @@
 		const basePath = window.location.pathname.endsWith("/")
 			? window.location.pathname
 			: window.location.pathname.slice(0, window.location.pathname.lastIndexOf("/") + 1);
-		const siteVersion = "20260618.23";
+		const siteVersion = "20260618.24";
 		window.PGMGAME_VERSION = siteVersion;
 		const isMobileMode = /android|bb\d+|meego.+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile|opera m(ob|in)i|palm|phone|p(ixi|re)\/|plucker|pocket|psp|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|ipad|playbook|silk/i.test(navigator.userAgent || "")
 			|| (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
@@ -1118,8 +1118,12 @@
 			const label = document.createElement("span");
 			label.className = "pgmgame-rotate-label";
 			label.textContent = text;
+			label.style.setProperty("display", "inline-flex", "important");
+			label.style.setProperty("align-items", "center");
+			label.style.setProperty("justify-content", "center");
 			label.style.setProperty("transform", "rotate(90deg)", "important");
 			label.style.setProperty("transform-origin", "center center", "important");
+			label.style.setProperty("white-space", "nowrap");
 			element.appendChild(label);
 		};
 		const setRotatingLabelText = (element, text) => {
