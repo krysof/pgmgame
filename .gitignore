@@ -1,0 +1,16 @@
+FBNeo/
+emsdk/
+.build/
+public/
+*.bc
+*.a
+*.o
+*.d
+*.wat
+*.zip
+!.gitignore
+!roms/
+!roms/orleg2_104cn.zip
+!roms/kov2nl.zip
+!roms/kov2nl_302cn.zip
+!roms/ddpdojt.zip

@@ -1,0 +1,1854 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>pgmgame</title>
+	<style>
+		html, body { width: 100%; height: 100%; margin: 0; background: #050505; color: #fff; font-family: system-ui, sans-serif; }
+		#pgmgame-stage, #game { width: 100%; height: 100%; }
+		body.pgmgame-selecting #pgmgame-stage,
+		body.pgmgame-selecting #pgmgame-orientation-tip,
+		body.pgmgame-selecting #pgmgame-card-modal {
+			display: none !important;
+		}
+		#loading { position: fixed; left: 12px; top: 12px; z-index: 1; color: #ddd; }
+		#pgmgame-home {
+			min-height: 100%;
+			box-sizing: border-box;
+			display: block;
+			padding: max(24px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+			background:
+				radial-gradient(circle at 18% 0%, rgba(215, 45, 45, .18), transparent 32%),
+				radial-gradient(circle at 88% 18%, rgba(255, 190, 70, .16), transparent 34%),
+				#050505;
+		}
+		body:not(.pgmgame-selecting) #pgmgame-home {
+			display: none !important;
+		}
+		#pgmgame-home-panel {
+			width: min(1120px, 100%);
+			margin: 0 auto;
+		}
+		#pgmgame-home-top {
+			display: flex;
+			align-items: flex-end;
+			justify-content: space-between;
+			gap: 18px;
+			margin-bottom: 20px;
+		}
+		#pgmgame-home h1 {
+			margin: 0;
+			font-size: clamp(30px, 5vw, 54px);
+			letter-spacing: .04em;
+		}
+		#pgmgame-home-version {
+			margin-top: 6px;
+			color: rgba(255, 255, 255, .62);
+			font-size: 14px;
+			font-weight: 800;
+		}
+		#pgmgame-home-settings {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			justify-content: flex-end;
+			gap: 10px;
+		}
+		#pgmgame-home-settings #pgmgame-language {
+			display: flex;
+		}
+		.pgmgame-home-setting {
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			border: 1px solid rgba(255, 255, 255, .25);
+			border-radius: 999px;
+			background: rgba(0, 0, 0, .62);
+			padding: 0 0 0 11px;
+			backdrop-filter: blur(10px);
+			-webkit-backdrop-filter: blur(10px);
+		}
+		.pgmgame-home-setting label {
+			font-size: 13px;
+			font-weight: 700;
+		}
+		.pgmgame-home-setting select {
+			border: 0;
+			border-radius: 999px;
+			background: rgba(255, 255, 255, .14);
+			color: #fff;
+			font-size: 13px;
+			font-weight: 700;
+			padding: 9px 10px;
+		}
+		.pgmgame-home-setting option {
+			color: #111;
+		}
+		#pgmgame-game-list {
+			display: grid;
+			grid-template-columns: repeat(4, minmax(0, 1fr));
+			gap: 16px;
+		}
+		.pgmgame-game-card {
+			overflow: hidden;
+			border: 1px solid rgba(255, 255, 255, .2);
+			border-radius: 22px;
+			background: rgba(255, 255, 255, .1);
+			color: #fff;
+			padding: 0;
+			cursor: pointer;
+			box-shadow: 0 20px 50px rgba(0, 0, 0, .35);
+			text-align: left;
+		}
+		.pgmgame-game-card:hover,
+		.pgmgame-game-card:focus-visible {
+			border-color: rgba(255, 255, 255, .58);
+			background: rgba(255, 255, 255, .16);
+			outline: none;
+		}
+		.pgmgame-game-card svg {
+			display: block;
+			width: 100%;
+			aspect-ratio: 4 / 3;
+			height: auto;
+			background: #111;
+		}
+		.pgmgame-game-card-title {
+			display: block;
+			padding: 14px 15px 16px;
+			font-size: 18px;
+			font-weight: 900;
+			line-height: 1.25;
+		}
+		#pgmgame-language {
+			position: static;
+			display: none;
+			align-items: center;
+			gap: 6px;
+			border: 1px solid rgba(255, 255, 255, .25);
+			border-radius: 999px;
+			background: rgba(0, 0, 0, .62);
+			color: #fff;
+			padding: 0;
+			backdrop-filter: blur(10px);
+			-webkit-backdrop-filter: blur(10px);
+		}
+		#pgmgame-toolbar #pgmgame-language {
+			display: flex;
+		}
+		#pgmgame-language label {
+			font-size: 13px;
+			font-weight: 700;
+			padding-left: 11px;
+		}
+		#pgmgame-language select {
+			max-width: 112px;
+			border: 0;
+			border-radius: 999px;
+			background: rgba(255, 255, 255, .14);
+			color: #fff;
+			font-size: 13px;
+			font-weight: 700;
+			padding: 9px 10px;
+		}
+		#pgmgame-language option {
+			color: #111;
+		}
+		#pgmgame-toolbar {
+			position: fixed;
+			left: auto;
+			top: 0;
+			right: max(12px, env(safe-area-inset-right));
+			bottom: auto;
+			z-index: 2000;
+			display: flex;
+			flex-direction: row;
+			flex-wrap: wrap;
+			justify-content: flex-end;
+			align-items: center;
+			gap: 8px;
+			width: min(74vw, 430px);
+			transform: none;
+		}
+		#pgmgame-toolbar.pgmgame-toolbar-fullscreen-edge {
+			left: auto;
+			top: 50%;
+			right: max(12px, env(safe-area-inset-right));
+			bottom: auto;
+			flex-direction: column;
+			flex-wrap: nowrap;
+			align-items: flex-end;
+			width: auto;
+			max-width: none;
+			transform: translateY(-50%);
+		}
+		#pgmgame-toolbar.pgmgame-toolbar-fullscreen-edge button,
+		#pgmgame-toolbar.pgmgame-toolbar-fullscreen-edge select {
+			width: 100%;
+		}
+		#pgmgame-toolbar-menu {
+			display: none;
+		}
+		#pgmgame-toolbar button,
+		#pgmgame-toolbar select {
+			border: 1px solid rgba(255, 255, 255, .35);
+			border-radius: 999px;
+			background: rgba(0, 0, 0, .62);
+			color: #fff;
+			font-size: 13px;
+			font-weight: 700;
+			line-height: 1;
+			padding: 9px 11px;
+			backdrop-filter: blur(10px);
+			-webkit-backdrop-filter: blur(10px);
+			touch-action: manipulation;
+		}
+		#pgmgame-layout-reset[hidden] {
+			display: none !important;
+		}
+		#pgmgame-toolbar option {
+			color: #111;
+		}
+		#pgmgame-stage:fullscreen,
+		#pgmgame-stage:-webkit-full-screen {
+			background: #050505;
+		}
+		body.pgmgame-pseudo-fullscreen {
+			overflow: hidden;
+			touch-action: none;
+		}
+		body.pgmgame-pseudo-fullscreen #pgmgame-stage {
+			position: fixed;
+			inset: 0;
+			width: 100vw;
+			height: 100dvh;
+			z-index: 1990;
+			background: #050505;
+		}
+		@media (orientation: portrait) {
+			body.pgmgame-pseudo-fullscreen #pgmgame-stage {
+				left: 50%;
+				top: 50%;
+				width: 100dvh;
+				height: 100vw;
+				transform: translate(-50%, -50%) rotate(90deg);
+				transform-origin: center center;
+			}
+		}
+		.ejs_virtualGamepad_parent {
+			position: fixed !important;
+			inset: 0 !important;
+			width: 100vw !important;
+			height: 100dvh !important;
+			bottom: auto !important;
+			z-index: 1200 !important;
+			pointer-events: none !important;
+		}
+		body.pgmgame-pseudo-fullscreen .ejs_virtualGamepad_parent {
+			--pgm-center-width: 56px;
+			--pgm-center-height: 30px;
+			z-index: 2147483000 !important;
+		}
+		body.pgmgame-pseudo-fullscreen #pgmgame-stage .ejs_virtualGamepad_parent {
+			position: absolute !important;
+			inset: 0 !important;
+			width: 100% !important;
+			height: 100% !important;
+			transform: none !important;
+		}
+		body.pgmgame-pseudo-fullscreen #pgmgame-stage .ejs_virtualGamepad_left {
+			left: max(14px, env(safe-area-inset-left)) !important;
+			bottom: max(14px, env(safe-area-inset-bottom)) !important;
+		}
+		body.pgmgame-pseudo-fullscreen #pgmgame-stage .ejs_virtualGamepad_right {
+			right: max(26px, env(safe-area-inset-right)) !important;
+			bottom: max(48px, env(safe-area-inset-bottom)) !important;
+		}
+		body.pgmgame-pseudo-fullscreen #pgmgame-stage .ejs_virtualGamepad_bottom {
+			left: 50% !important;
+			bottom: max(14px, env(safe-area-inset-bottom)) !important;
+			margin-left: calc(var(--pgm-center-width) * -.5) !important;
+		}
+		body.pgmgame-pseudo-fullscreen #pgmgame-toolbar {
+			position: fixed !important;
+			z-index: 2147483001;
+		}
+		body.pgmgame-pseudo-fullscreen #loading,
+		body.pgmgame-pseudo-fullscreen #pgmgame-orientation-tip {
+			z-index: 2147483002;
+		}
+		#pgmgame-card-modal[hidden] {
+			display: none !important;
+		}
+		#pgmgame-card-modal {
+			position: fixed;
+			inset: 0;
+			z-index: 3000;
+			display: grid;
+			place-items: center;
+			padding: 16px;
+			background: rgba(0, 0, 0, .62);
+		}
+		#pgmgame-card-panel {
+			width: min(440px, calc(100vw - 24px));
+			max-height: min(680px, calc(100vh - 24px));
+			overflow: auto;
+			border: 1px solid rgba(255, 255, 255, .2);
+			border-radius: 20px;
+			background: rgba(18, 18, 18, .96);
+			box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+			padding: 14px;
+		}
+		@media (max-width: 575px) {
+			#pgmgame-home {
+				align-items: stretch;
+				padding-top: max(38px, env(safe-area-inset-top));
+			}
+			#pgmgame-home-top {
+				display: block;
+			}
+			#pgmgame-home-settings {
+				justify-content: flex-start;
+				margin-top: 14px;
+			}
+			#pgmgame-game-list {
+				grid-template-columns: 1fr 1fr;
+				gap: 12px;
+			}
+			.pgmgame-game-card-title {
+				font-size: 15px;
+				padding: 11px 12px 13px;
+			}
+			#pgmgame-card-panel {
+				width: calc(100vw - 18px);
+				max-height: calc(100vh - 32px);
+				padding: 12px;
+			}
+			.pgmgame-card-row {
+				flex-wrap: wrap;
+			}
+			.pgmgame-card-slot-group {
+				gap: 6px;
+			}
+			.pgmgame-card-slot-btn {
+				padding: 8px 6px !important;
+				font-size: 14px !important;
+			}
+		}
+		.pgmgame-card-row {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 12px;
+			margin-bottom: 12px;
+		}
+		.pgmgame-card-slot-group {
+			display: grid;
+			grid-template-columns: repeat(4, 1fr);
+			gap: 8px;
+			margin-bottom: 12px;
+		}
+		.pgmgame-card-slot-btn {
+			padding: 10px 8px !important;
+			font-size: 16px !important;
+			border-radius: 14px !important;
+		}
+		.pgmgame-card-slot-btn.active {
+			background: rgba(91, 132, 255, .72);
+			border-color: rgba(150, 180, 255, .9);
+		}
+		#pgmgame-card-panel h2 {
+			margin: 0;
+			font-size: 18px;
+		}
+		#pgmgame-card-panel label {
+			font-weight: 700;
+		}
+		#pgmgame-card-panel select,
+		#pgmgame-card-panel textarea,
+		#pgmgame-card-panel button {
+			border-radius: 12px;
+			font: inherit;
+		}
+		#pgmgame-card-panel select,
+		#pgmgame-card-panel textarea {
+			border: 1px solid rgba(255, 255, 255, .24);
+			background: rgba(255, 255, 255, .1);
+			color: #fff;
+		}
+		#pgmgame-card-panel select {
+			padding: 9px 10px;
+		}
+		#pgmgame-card-panel textarea {
+			width: 100%;
+			min-height: 58px;
+			box-sizing: border-box;
+			padding: 10px;
+			resize: vertical;
+		}
+		#pgmgame-card-panel button,
+		.pgmgame-card-file {
+			border: 1px solid rgba(255, 255, 255, .28);
+			background: rgba(255, 255, 255, .13);
+			color: #fff;
+			font-weight: 800;
+			padding: 10px 12px;
+		}
+		.pgmgame-card-action {
+			width: 100%;
+			min-height: 44px;
+			font-size: 15px;
+		}
+		.pgmgame-card-grid {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 10px;
+			margin: 12px 0;
+		}
+		.pgmgame-card-file {
+			display: block;
+			text-align: center;
+		}
+		.pgmgame-card-file input {
+			display: none;
+		}
+		#pgmgame-card-video {
+			display: none;
+			width: 100%;
+			max-height: 180px;
+			margin-top: 10px;
+			border-radius: 14px;
+			background: #000;
+		}
+		#pgmgame-card-status {
+			min-height: 22px;
+			margin: 10px 0 0;
+			color: #ddd;
+			font-size: 14px;
+			line-height: 1.45;
+		}
+		.pgmgame-card-hint {
+			margin: 8px 0 0;
+			color: rgba(255, 255, 255, .66);
+			font-size: 13px;
+			line-height: 1.45;
+		}
+		#pgmgame-orientation-tip[hidden] {
+			display: none !important;
+		}
+		#pgmgame-orientation-tip {
+			position: fixed;
+			left: 50%;
+			top: max(12px, env(safe-area-inset-top));
+			z-index: 2147483002;
+			transform: translateX(-50%);
+			border-radius: 999px;
+			background: rgba(0, 0, 0, .68);
+			color: #fff;
+			font-weight: 800;
+			padding: 10px 14px;
+			pointer-events: none;
+		}
+		.ejs_virtualGamepad_parent {
+			--pgm-dpad-size: clamp(118px, 15vw, 160px);
+			--pgm-action-size: clamp(68px, 8.5vw, 92px);
+			--pgm-action-gap: clamp(12px, 2vw, 22px);
+			--pgm-center-width: clamp(82px, 9vw, 118px);
+			--pgm-center-height: clamp(46px, 5vw, 62px);
+			--pgm-center-shift: 76px;
+			opacity: 1 !important;
+		}
+		.ejs_virtualGamepad_parent.pgmgame-controls-hidden {
+			display: none !important;
+		}
+		.ejs_menu_bar,
+		.ejs_menu_button,
+		.ejs_context_menu,
+		.ejs_virtualGamepad_open {
+			display: none !important;
+			pointer-events: none !important;
+		}
+		.ejs_virtualGamepad_left {
+			left: clamp(18px, 5vw, 64px) !important;
+			bottom: clamp(58px, 7vh, 100px) !important;
+			width: var(--pgm-dpad-size) !important;
+			height: var(--pgm-dpad-size) !important;
+			pointer-events: auto !important;
+			transform: translate(var(--pgm-layout-x, 0px), var(--pgm-layout-y, 0px)) scale(var(--pgm-layout-scale, 1)) !important;
+			transform-origin: center center !important;
+		}
+		.ejs_virtualGamepad_right {
+			right: clamp(18px, 5vw, 64px) !important;
+			bottom: clamp(58px, 7vh, 100px) !important;
+			width: calc(var(--pgm-action-size) * 2 + var(--pgm-action-gap)) !important;
+			height: calc(var(--pgm-action-size) * 2 + var(--pgm-action-gap)) !important;
+			pointer-events: auto !important;
+			transform: translate(var(--pgm-layout-x, 0px), var(--pgm-layout-y, 0px)) scale(var(--pgm-layout-scale, 1)) !important;
+			transform-origin: center center !important;
+		}
+		.ejs_virtualGamepad_bottom {
+			bottom: max(6px, env(safe-area-inset-bottom)) !important;
+			width: calc(var(--pgm-center-width) * 2 + 18px) !important;
+			height: calc(var(--pgm-center-height) * 2 + 14px) !important;
+			margin-left: calc((var(--pgm-center-width) * -1) - 9px) !important;
+			pointer-events: auto !important;
+			transform: translate(var(--pgm-layout-x, 0px), var(--pgm-layout-y, 0px)) scale(var(--pgm-layout-scale, 1)) !important;
+			transform-origin: center center !important;
+		}
+		body.pgmgame-layout-editing .pgmgame-layout-target {
+			outline: 2px dashed rgba(255, 255, 255, .82) !important;
+			outline-offset: 8px;
+			cursor: move;
+			transform: translate(var(--pgm-layout-x, 0px), var(--pgm-layout-y, 0px)) scale(var(--pgm-layout-scale, 1)) !important;
+			transform-origin: center center !important;
+			z-index: 2147483000 !important;
+		}
+		.pgmgame-layout-handle {
+			position: absolute;
+			right: -15px;
+			bottom: -15px;
+			z-index: 2147483001;
+			display: none;
+			width: 30px;
+			height: 30px;
+			border: 2px solid rgba(255, 255, 255, .9);
+			border-radius: 999px;
+			background: rgba(80, 140, 255, .86);
+			box-shadow: 0 8px 20px rgba(0, 0, 0, .38);
+			cursor: nwse-resize;
+			pointer-events: auto;
+			touch-action: none;
+		}
+		body.pgmgame-layout-editing .pgmgame-layout-handle {
+			display: block;
+		}
+		.ejs_virtualGamepad_button {
+			width: var(--pgm-action-size) !important;
+			height: var(--pgm-action-size) !important;
+			line-height: var(--pgm-action-size) !important;
+			font-size: calc(var(--pgm-action-size) * .48) !important;
+			background: rgba(35, 35, 35, .78) !important;
+			border: 2px solid rgba(255, 255, 255, .62) !important;
+			box-shadow: 0 10px 26px rgba(0, 0, 0, .34), inset 0 0 24px rgba(255, 255, 255, .08) !important;
+			color: rgba(255, 255, 255, .82) !important;
+			touch-action: none !important;
+		}
+		.ejs_virtualGamepad_button.pgmgame-layout-target {
+			transform: translate(var(--pgm-layout-x, 0px), var(--pgm-layout-y, 0px)) scale(var(--pgm-layout-scale, 1)) !important;
+			transform-origin: center center !important;
+		}
+		.ejs_virtualGamepad_button.b_a,
+		.ejs_virtualGamepad_button.b_b,
+		.ejs_virtualGamepad_button.b_c,
+		.ejs_virtualGamepad_button.b_d {
+			font-size: calc(var(--pgm-action-size) * .52) !important;
+		}
+		.ejs_virtualGamepad_button.b_c {
+			left: 0 !important;
+			top: 0 !important;
+		}
+		.ejs_virtualGamepad_button.b_d {
+			left: calc(var(--pgm-action-size) + var(--pgm-action-gap)) !important;
+			top: 0 !important;
+		}
+		.ejs_virtualGamepad_button.b_a {
+			left: 0 !important;
+			top: calc(var(--pgm-action-size) + var(--pgm-action-gap)) !important;
+		}
+		.ejs_virtualGamepad_button.b_b {
+			left: calc(var(--pgm-action-size) + var(--pgm-action-gap)) !important;
+			top: calc(var(--pgm-action-size) + var(--pgm-action-gap)) !important;
+		}
+		.ejs_virtualGamepad_button.b_coin,
+		.ejs_virtualGamepad_button.b_start {
+			width: var(--pgm-center-width) !important;
+			height: var(--pgm-center-height) !important;
+			line-height: var(--pgm-center-height) !important;
+			border-radius: 12px !important;
+			font-size: calc(var(--pgm-center-height) * .36) !important;
+			transform: translateY(var(--pgm-center-shift)) !important;
+		}
+		.ejs_virtualGamepad_button.b_coin.pgmgame-layout-target,
+		.ejs_virtualGamepad_button.b_start.pgmgame-layout-target {
+			transform: translate(var(--pgm-layout-x, 0px), calc(var(--pgm-center-shift) + var(--pgm-layout-y, 0px))) scale(var(--pgm-layout-scale, 1)) !important;
+		}
+		.ejs_virtualGamepad_button.b_coin {
+			left: 0 !important;
+			top: 0 !important;
+		}
+		.ejs_virtualGamepad_button.b_start {
+			left: calc(var(--pgm-center-width) + 18px) !important;
+			top: 0 !important;
+		}
+		.ejs_dpad_main {
+			position: relative;
+			opacity: .92 !important;
+			background: rgba(128, 0, 0, .5);
+			border-radius: 50%;
+			box-shadow: 0 8px 20px rgba(0, 0, 0, .42), inset 0 0 20px rgba(255, 0, 0, .16);
+		}
+		.ejs_dpad_horizontal,
+		.ejs_dpad_vertical {
+			background: rgba(120, 120, 120, .82) !important;
+			border-radius: 10px;
+		}
+		.ejs_dpad_main::after {
+			content: "";
+			position: absolute;
+			left: 50%;
+			top: 50%;
+			width: calc(var(--pgm-dpad-size) * .2);
+			height: calc(var(--pgm-dpad-size) * .2);
+			border-radius: 50%;
+			background: rgba(28, 28, 28, .92);
+			border: 2px solid rgba(255, 255, 255, .5);
+			box-shadow: inset 0 0 10px rgba(255, 255, 255, .12), 0 2px 8px rgba(0, 0, 0, .4);
+			transform: translate(-50%, -50%);
+			pointer-events: none;
+		}
+		.ejs_zone,
+		.cs_pgmgame.b_dpad {
+			position: relative;
+			width: var(--pgm-dpad-size) !important;
+			height: var(--pgm-dpad-size) !important;
+			border-radius: 50%;
+			background:
+				radial-gradient(circle at 50% 50%, rgba(24, 24, 24, .97) 0 13%, transparent 14%),
+				radial-gradient(circle at 50% 14%, rgba(245, 245, 245, .9) 0 5%, transparent 5.3%),
+				radial-gradient(circle at 79% 21%, rgba(245, 245, 245, .9) 0 5%, transparent 5.3%),
+				radial-gradient(circle at 86% 50%, rgba(245, 245, 245, .9) 0 5%, transparent 5.3%),
+				radial-gradient(circle at 79% 79%, rgba(245, 245, 245, .9) 0 5%, transparent 5.3%),
+				radial-gradient(circle at 50% 86%, rgba(245, 245, 245, .9) 0 5%, transparent 5.3%),
+				radial-gradient(circle at 21% 79%, rgba(245, 245, 245, .9) 0 5%, transparent 5.3%),
+				radial-gradient(circle at 14% 50%, rgba(245, 245, 245, .9) 0 5%, transparent 5.3%),
+				radial-gradient(circle at 21% 21%, rgba(245, 245, 245, .9) 0 5%, transparent 5.3%),
+				radial-gradient(circle, rgba(128, 0, 0, .58) 0 100%) !important;
+			box-shadow: 0 8px 20px rgba(0, 0, 0, .42), inset 0 0 20px rgba(255, 0, 0, .16);
+			touch-action: none !important;
+		}
+		.ejs_zone::before,
+		.cs_pgmgame.b_dpad::before {
+			content: "";
+			position: absolute;
+			left: 50%;
+			top: 50%;
+			width: 74%;
+			height: 74%;
+			background:
+				linear-gradient(45deg, transparent 0 43%, rgba(160, 160, 160, .72) 43% 46%, transparent 46% 54%, rgba(160, 160, 160, .72) 54% 57%, transparent 57%),
+				linear-gradient(-45deg, transparent 0 43%, rgba(160, 160, 160, .72) 43% 46%, transparent 46% 54%, rgba(160, 160, 160, .72) 54% 57%, transparent 57%),
+				linear-gradient(to right, transparent 0 37%, rgba(120, 120, 120, .92) 37% 63%, transparent 63%),
+				linear-gradient(to bottom, transparent 0 37%, rgba(120, 120, 120, .92) 37% 63%, transparent 63%);
+			border-radius: 50%;
+			transform: translate(-50%, -50%);
+			pointer-events: none;
+		}
+		.ejs_zone::after,
+		.cs_pgmgame.b_dpad::after {
+			content: "";
+			position: absolute;
+			left: 50%;
+			top: 50%;
+			width: calc(var(--pgm-dpad-size) * .2);
+			height: calc(var(--pgm-dpad-size) * .2);
+			border-radius: 50%;
+			background: rgba(28, 28, 28, .92);
+			border: 2px solid rgba(255, 255, 255, .5);
+			box-shadow: inset 0 0 10px rgba(255, 255, 255, .12), 0 2px 8px rgba(0, 0, 0, .4);
+			transform: translate(-50%, -50%);
+			pointer-events: none;
+		}
+		.cs_pgmgame.b_dpad .nipple {
+			opacity: 1 !important;
+			z-index: 3 !important;
+		}
+		.cs_pgmgame.b_dpad .nipple .back {
+			width: var(--pgm-dpad-size) !important;
+			height: var(--pgm-dpad-size) !important;
+			margin-left: calc(var(--pgm-dpad-size) * -.5) !important;
+			margin-top: calc(var(--pgm-dpad-size) * -.5) !important;
+			background: transparent !important;
+			opacity: 1 !important;
+		}
+		.cs_pgmgame.b_dpad .nipple .front {
+			width: calc(var(--pgm-dpad-size) * .22) !important;
+			height: calc(var(--pgm-dpad-size) * .22) !important;
+			margin-left: calc(var(--pgm-dpad-size) * -.11) !important;
+			margin-top: calc(var(--pgm-dpad-size) * -.11) !important;
+			box-sizing: border-box !important;
+			background: rgba(24, 24, 24, .96) !important;
+			border: 2px solid rgba(255, 255, 255, .62) !important;
+			box-shadow: inset 0 0 10px rgba(255, 255, 255, .12), 0 2px 8px rgba(0, 0, 0, .4) !important;
+			opacity: .96 !important;
+		}
+		.ejs_virtualGamepad_button_down {
+			background: rgba(150, 0, 0, .9) !important;
+			transform: scale(.94);
+		}
+		@media (max-width: 575px) {
+			#pgmgame-toolbar button {
+				padding: 8px 10px;
+				font-size: 12px;
+			}
+			#pgmgame-toolbar #pgmgame-language label {
+				font-size: 12px;
+				padding-left: 9px;
+			}
+			#pgmgame-toolbar #pgmgame-language select {
+				max-width: 96px;
+				font-size: 12px;
+				padding: 8px 9px;
+			}
+			#pgmgame-toolbar {
+				gap: 6px;
+				width: min(96vw, 430px);
+				z-index: 1800;
+			}
+			.ejs_virtualGamepad_parent {
+				--pgm-dpad-size: 120px;
+				--pgm-action-size: 66px;
+				--pgm-action-gap: 12px;
+				--pgm-center-width: 62px;
+				--pgm-center-height: 44px;
+				--pgm-center-shift: 0px;
+			}
+			.ejs_virtualGamepad_left {
+				left: max(8px, env(safe-area-inset-left)) !important;
+			}
+			.ejs_virtualGamepad_right {
+				right: max(8px, env(safe-area-inset-right)) !important;
+			}
+			.ejs_virtualGamepad_bottom {
+				left: 50% !important;
+				bottom: calc(max(128px, env(safe-area-inset-bottom)) + 10px) !important;
+				width: var(--pgm-center-width) !important;
+				height: calc(var(--pgm-center-height) * 2 + 12px) !important;
+				margin-left: calc(var(--pgm-center-width) * -.5) !important;
+			}
+			.ejs_virtualGamepad_button.b_coin,
+			.ejs_virtualGamepad_button.b_start {
+				transform: none !important;
+			}
+			.ejs_virtualGamepad_button.b_coin.pgmgame-layout-target,
+			.ejs_virtualGamepad_button.b_start.pgmgame-layout-target {
+				transform: translate(var(--pgm-layout-x, 0px), var(--pgm-layout-y, 0px)) scale(var(--pgm-layout-scale, 1)) !important;
+			}
+			.ejs_virtualGamepad_button.b_coin {
+				left: 0 !important;
+				top: 0 !important;
+			}
+			.ejs_virtualGamepad_button.b_start {
+				left: 0 !important;
+				top: calc(var(--pgm-center-height) + 12px) !important;
+			}
+			.pgmgame-card-grid {
+				grid-template-columns: 1fr;
+			}
+		}
+		@media (max-width: 575px) and (orientation: portrait) {
+			#pgmgame-toolbar {
+				position: fixed !important;
+				left: 50% !important;
+				right: auto !important;
+				top: auto !important;
+				bottom: calc(max(286px, 34dvh) + env(safe-area-inset-bottom)) !important;
+				width: min(96vw, 430px) !important;
+				transform: translateX(-50%) !important;
+				justify-content: center;
+			}
+			#pgmgame-toolbar.pgmgame-toolbar-fullscreen-edge {
+				flex-direction: row;
+				flex-wrap: wrap;
+				align-items: center;
+				max-width: min(96vw, 430px);
+			}
+			#pgmgame-toolbar.pgmgame-toolbar-fullscreen-edge button,
+			#pgmgame-toolbar.pgmgame-toolbar-fullscreen-edge select {
+				width: auto;
+			}
+			#pgmgame-toolbar.pgmgame-toolbar-mobile-fullscreen {
+				left: auto !important;
+				right: max(8px, env(safe-area-inset-right)) !important;
+				top: calc(max(54px, env(safe-area-inset-top)) + 8px) !important;
+				bottom: auto !important;
+				width: max-content !important;
+				max-width: min(92vw, 320px);
+				transform: none !important;
+				justify-content: flex-end;
+				align-items: flex-start;
+				gap: 6px;
+			}
+			body.pgmgame-pseudo-fullscreen #pgmgame-toolbar.pgmgame-toolbar-mobile-fullscreen {
+				right: calc(max(8px, env(safe-area-inset-right)) + 26px) !important;
+				top: calc(max(54px, env(safe-area-inset-top)) + 106px) !important;
+				transform: rotate(90deg) !important;
+				transform-origin: right top !important;
+			}
+			#pgmgame-toolbar.pgmgame-toolbar-mobile-fullscreen #pgmgame-toolbar-menu {
+				display: block;
+			}
+			#pgmgame-toolbar.pgmgame-toolbar-mobile-fullscreen:not(.pgmgame-toolbar-expanded) #pgmgame-controls-toggle,
+			#pgmgame-toolbar.pgmgame-toolbar-mobile-fullscreen:not(.pgmgame-toolbar-expanded) #pgmgame-layout-toggle,
+			#pgmgame-toolbar.pgmgame-toolbar-mobile-fullscreen:not(.pgmgame-toolbar-expanded) #pgmgame-layout-reset,
+			#pgmgame-toolbar.pgmgame-toolbar-mobile-fullscreen:not(.pgmgame-toolbar-expanded) #pgmgame-card-toggle {
+				display: none;
+			}
+			#pgmgame-toolbar.pgmgame-toolbar-mobile-fullscreen:not(.pgmgame-toolbar-expanded).pgmgame-layout-editing-toolbar #pgmgame-layout-reset {
+				display: block;
+			}
+			body.pgmgame-pseudo-fullscreen .ejs_virtualGamepad_parent {
+				left: 50% !important;
+				top: 50% !important;
+				width: 100dvh !important;
+				height: 100vw !important;
+				transform: translate(-50%, -50%) rotate(90deg) !important;
+				transform-origin: center center !important;
+			}
+			body.pgmgame-pseudo-fullscreen #pgmgame-stage .ejs_virtualGamepad_left {
+				left: calc(100dvh - max(54px, env(safe-area-inset-bottom)) - var(--pgm-dpad-size)) !important;
+				top: calc(100vw - var(--pgm-dpad-size)) !important;
+				right: auto !important;
+				bottom: auto !important;
+			}
+			body.pgmgame-pseudo-fullscreen #pgmgame-stage .ejs_virtualGamepad_right {
+				left: calc(100dvh - max(38px, env(safe-area-inset-bottom)) - (var(--pgm-action-size) * 2 + var(--pgm-action-gap))) !important;
+				right: auto !important;
+				top: calc(100vw - var(--pgm-dpad-size) - 8px - (var(--pgm-action-size) * 2 + var(--pgm-action-gap))) !important;
+				bottom: auto !important;
+			}
+			body.pgmgame-pseudo-fullscreen #pgmgame-stage .ejs_virtualGamepad_bottom {
+				left: calc(100dvh - max(42px, env(safe-area-inset-bottom)) - var(--pgm-center-width)) !important;
+				top: 12px !important;
+				right: auto !important;
+				bottom: auto !important;
+				margin-left: 0 !important;
+			}
+		}
+		@media (min-width: 900px) and (pointer: fine) {
+			.ejs_virtualGamepad_parent {
+				--pgm-dpad-size: 150px;
+				--pgm-action-size: 78px;
+			}
+		}
+	</style>
+</head>
+<body class="pgmgame-selecting">
+	<div id="pgmgame-language">
+		<label for="pgmgame-language-select">语言</label>
+		<select id="pgmgame-language-select" aria-label="游戏语言">
+			<option value="auto">自动</option>
+			<option value="cn">简体中文</option>
+			<option value="tw">繁體中文</option>
+			<option value="jp">日本語</option>
+			<option value="ko">한국어</option>
+			<option value="en">English</option>
+		</select>
+	</div>
+	<main id="pgmgame-home" aria-labelledby="pgmgame-home-title">
+		<section id="pgmgame-home-panel">
+			<div id="pgmgame-home-top">
+				<div>
+					<h1 id="pgmgame-home-title">选择游戏</h1>
+					<div id="pgmgame-home-version"></div>
+				</div>
+				<div id="pgmgame-home-settings">
+					<div id="pgmgame-home-language"></div>
+					<div id="pgmgame-filter-setting" class="pgmgame-home-setting">
+						<label for="pgmgame-filter-select">滤镜</label>
+						<select id="pgmgame-filter-select" aria-label="滤镜">
+							<option value="on">开启</option>
+							<option value="off">关闭</option>
+						</select>
+					</div>
+					<div id="pgmgame-orientation-setting" class="pgmgame-home-setting">
+						<label for="pgmgame-orientation-select">画面</label>
+						<select id="pgmgame-orientation-select" aria-label="画面方向">
+							<option value="landscape">横屏</option>
+							<option value="portrait">竖屏</option>
+						</select>
+					</div>
+				</div>
+			</div>
+			<div id="pgmgame-game-list" aria-label="游戏列表"></div>
+		</section>
+	</main>
+	<div id="pgmgame-stage">
+		<div id="loading">pgmgame loading...</div>
+		<div id="game"></div>
+	</div>
+	<div id="pgmgame-orientation-tip" hidden>请横放手机</div>
+	<div id="pgmgame-card-modal" hidden>
+		<div id="pgmgame-card-panel" role="dialog" aria-modal="true" aria-labelledby="pgmgame-card-title">
+			<div class="pgmgame-card-row">
+				<h2 id="pgmgame-card-title">卡片导入</h2>
+				<button id="pgmgame-card-close" type="button">关闭</button>
+			</div>
+			<div class="pgmgame-card-row">
+				<label>卡槽</label>
+				<select id="pgmgame-card-slot" hidden>
+					<option value="1" selected>P1</option>
+					<option value="2">P2</option>
+					<option value="3">P3</option>
+					<option value="4">P4</option>
+				</select>
+			</div>
+			<div class="pgmgame-card-slot-group" id="pgmgame-card-slot-group">
+				<button type="button" class="pgmgame-card-slot-btn active" data-slot="1">P1</button>
+				<button type="button" class="pgmgame-card-slot-btn" data-slot="2">P2</button>
+				<button type="button" class="pgmgame-card-slot-btn" data-slot="3">P3</button>
+				<button type="button" class="pgmgame-card-slot-btn" data-slot="4">P4</button>
+			</div>
+			<div class="pgmgame-card-grid">
+				<button id="pgmgame-card-scan" type="button" class="pgmgame-card-action">扫码</button>
+				<label class="pgmgame-card-file pgmgame-card-action">载入二维码照片<input id="pgmgame-card-image" type="file" accept="image/*"></label>
+				<label class="pgmgame-card-file pgmgame-card-action">上传 BIN/PG2<input id="pgmgame-card-file" type="file" accept=".bin,.pg2,application/octet-stream"></label>
+				<button id="pgmgame-card-stop" type="button" class="pgmgame-card-action">停止扫码</button>
+			</div>
+			<video id="pgmgame-card-video" playsinline muted></video>
+			<label for="pgmgame-card-text">粘贴二维码内容</label>
+			<textarea id="pgmgame-card-text" placeholder="PGM2:base64..."></textarea>
+			<div class="pgmgame-card-grid">
+				<button id="pgmgame-card-import-text" type="button" class="pgmgame-card-action">导入文本</button>
+				<button id="pgmgame-card-hard-reset" type="button" class="pgmgame-card-action">冷启动</button>
+			</div>
+			<p id="pgmgame-card-status"></p>
+			<p class="pgmgame-card-hint">二维码格式：PGM2:base64。支持 256 字节 .bin 或 264 字节 .pg2。导入后会写入所选卡槽并尝试运行中插卡。</p>
+		</div>
+	</div>
+	<script src="data/vendor/jsQR.js?v=1.4.0"></script>
+	<script>
+		const basePath = window.location.pathname.endsWith("/")
+			? window.location.pathname
+			: window.location.pathname.slice(0, window.location.pathname.lastIndexOf("/") + 1);
+		const siteVersion = "20260618.9";
+		window.PGMGAME_VERSION = siteVersion;
+		const isMobileMode = /android|bb\d+|meego.+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile|opera m(ob|in)i|palm|phone|p(ixi|re)\/|plucker|pocket|psp|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|ipad|playbook|silk/i.test(navigator.userAgent || "")
+			|| (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
+			|| (window.matchMedia && window.matchMedia("(any-pointer: coarse)").matches);
+		const isPortraitMode = () => window.matchMedia ? window.matchMedia("(orientation: portrait)").matches : window.innerHeight >= window.innerWidth;
+		const isFullscreenMode = () => document.body.classList.contains("pgmgame-pseudo-fullscreen") || !!document.fullscreenElement || !!document.webkitFullscreenElement;
+		const browserLanguage = (navigator.languages && navigator.languages[0] || navigator.language || "").toLowerCase();
+		const savedLanguage = localStorage.getItem("pgmgame-language") || "auto";
+		const languageSelect = document.getElementById("pgmgame-language-select");
+		const languageMap = {
+			en: { ejs: "en", retroarch: 0, autoText: "Auto", restartText: "Changing language requires a cold boot. Restart the emulator now?" },
+			jp: { ejs: "ja", retroarch: 1, autoText: "自動", restartText: "言語の変更にはコールドブートが必要です。今すぐエミュレーターを再起動しますか？" },
+			ko: { ejs: "ko", retroarch: 10, autoText: "자동", restartText: "언어 변경에는 콜드 부팅이 필요합니다. 지금 에뮬레이터를 다시 시작할까요?" },
+			tw: { ejs: "zh-TW", retroarch: 11, autoText: "自動", restartText: "切換語言需要冷啟動。現在重啟模擬器嗎？" },
+			cn: { ejs: "zh-CN", retroarch: 12, autoText: "自动", restartText: "切换语言需要冷启动。现在重启模拟器吗？" }
+		};
+		const languageOptionText = {
+			cn: "简体中文",
+			tw: "繁體中文",
+			jp: "日本語",
+			ko: "한국어",
+			en: "English"
+		};
+		const normalizeLanguage = (value) => {
+			if (value !== "auto") return languageMap[value] ? value : "cn";
+			if (browserLanguage.includes("ja")) return "jp";
+			if (browserLanguage.includes("ko")) return "ko";
+			if (browserLanguage.includes("zh-hk") || browserLanguage.includes("zh-mo") || browserLanguage.includes("zh-tw")) return "tw";
+			if (browserLanguage.startsWith("zh")) return "cn";
+			return "en";
+		};
+		const getLanguageConfig = (value) => languageMap[normalizeLanguage(value)];
+		const selectedLanguage = normalizeLanguage(savedLanguage);
+		const selectedLanguageConfig = languageMap[selectedLanguage];
+		const savedOrientation = localStorage.getItem("pgmgame-orientation") || "landscape";
+		const orientationSelect = document.getElementById("pgmgame-orientation-select");
+		if (orientationSelect) orientationSelect.value = savedOrientation;
+		orientationSelect?.addEventListener("change", () => {
+			localStorage.setItem("pgmgame-orientation", orientationSelect.value);
+		});
+		const savedVideoFilter = localStorage.getItem("pgmgame-video-filter") || "off";
+		const filterSelect = document.getElementById("pgmgame-filter-select");
+		if (filterSelect) filterSelect.value = savedVideoFilter;
+		filterSelect?.addEventListener("change", () => {
+			localStorage.setItem("pgmgame-video-filter", filterSelect.value);
+		});
+		const shouldUseVideoFilter = () => (filterSelect ? filterSelect.value : savedVideoFilter) !== "off";
+		const gameCatalog = [
+			{ id: "orleg2_104cn", title: "西游释厄传2", accent: "#f2a900", subtitle: "ORLEG2", fileName: "orleg2_104cn.zip", url: "roms/orleg2_104cn.zip" },
+			{ id: "kov2nl", title: "三国战纪2 横扫千军", accent: "#d6342a", subtitle: "KOV2", fileName: "kov2nl.zip", url: "roms/kov2nl.zip" },
+			{ id: "kov2nl_302cn", title: "三国战纪2 盖世英雄", accent: "#4ca3ff", subtitle: "KOV2 CN", fileName: "kov2nl_302cn.zip", url: "roms/kov2nl_302cn.zip", parentUrl: "roms/kov2nl.zip" },
+			{ id: "kov3", title: "三国战纪3", accent: "#55d66b", subtitle: "KOV3", fileName: "kov3.zip", parts: ["roms/kov3.zip.001", "roms/kov3.zip.002", "roms/kov3.zip.003", "roms/kov3.zip.004"] },
+			{ id: "ddpdojt", title: "怒首领蜂 大往生 魂", accent: "#b76cff", subtitle: "DDPDOJ", fileName: "ddpdojt.zip", url: "roms/ddpdojt.zip" },
+			{ id: "kof98umh", title: "拳皇98 终极之战 英雄", accent: "#ff6c3d", subtitle: "KOF98", fileName: "kof98umh.zip", parts: ["roms/kof98umh.zip.001", "roms/kof98umh.zip.002", "roms/kof98umh.zip.003", "roms/kof98umh.zip.004", "roms/kof98umh.zip.005", "roms/kof98umh.zip.006"] }
+		];
+		let activeGame = gameCatalog[0];
+		const setLoadingText = (text) => {
+			const loading = document.getElementById("loading");
+			if (loading) loading.textContent = text;
+		};
+		const removeLoading = () => {
+			const loading = document.getElementById("loading");
+			if (loading) loading.remove();
+		};
+		const applyGameConfig = (game, gameUrl) => {
+			const languageConfig = getLanguageConfig(activeLanguageValue);
+			window.EJS_gameName = game.id;
+			window.EJS_gameUrl = gameUrl;
+			window.EJS_gameParentUrl = game.parentUrl || "";
+			window.EJS_language = languageConfig.ejs;
+			window.EJS_EmulatorOptions = getRetroArchOptions(languageConfig);
+			document.title = `${game.title} - pgmgame`;
+			setLoadingText(`${game.title} loading...`);
+		};
+		let splitRomCachePromise = null;
+		const openSplitRomCache = () => {
+			if (!window.indexedDB) return Promise.resolve(null);
+			if (splitRomCachePromise) return splitRomCachePromise;
+			splitRomCachePromise = new Promise((resolve) => {
+				const request = indexedDB.open("pgmgame-rom-parts", 1);
+				request.onerror = () => resolve(null);
+				request.onupgradeneeded = () => {
+					const db = request.result;
+					if (!db.objectStoreNames.contains("parts")) db.createObjectStore("parts");
+				};
+				request.onsuccess = () => resolve(request.result);
+			});
+			return splitRomCachePromise;
+		};
+		const readSplitRomPart = async (key) => {
+			const db = await openSplitRomCache();
+			if (!db) return null;
+			return new Promise((resolve) => {
+				const request = db.transaction("parts", "readonly").objectStore("parts").get(key);
+				request.onerror = () => resolve(null);
+				request.onsuccess = () => resolve(request.result || null);
+			});
+		};
+		const writeSplitRomPart = async (key, buffer) => {
+			const db = await openSplitRomCache();
+			if (!db) return;
+			return new Promise((resolve) => {
+				const request = db.transaction("parts", "readwrite").objectStore("parts").put(buffer, key);
+				request.onerror = () => resolve();
+				request.onsuccess = () => resolve();
+			});
+		};
+		const getSplitRomPartKey = (game, part, index) => `${siteVersion}:${game.id}:${game.fileName}:${index}:${part}`;
+		const prepareGameUrl = async (game) => {
+			if (game.url) return game.url;
+			const buffers = [];
+			for (let index = 0; index < game.parts.length; index += 1) {
+				const part = game.parts[index];
+				const cacheKey = getSplitRomPartKey(game, part, index);
+				let buffer = await readSplitRomPart(cacheKey);
+				if (buffer) {
+					setLoadingText(`${game.title} cached ${index + 1}/${game.parts.length}...`);
+				} else {
+					setLoadingText(`${game.title} loading ${index + 1}/${game.parts.length}...`);
+					const response = await fetch(`${part}?v=${siteVersion}`);
+					if (!response.ok) throw new Error(`${part} ${response.status}`);
+					buffer = await response.arrayBuffer();
+					await writeSplitRomPart(cacheKey, buffer);
+				}
+				buffers.push(buffer);
+			}
+			return new File(buffers, game.fileName, { type: "application/zip" });
+		};
+		const videoFilterPath = "/filters/video/Phosphor2x.filt";
+		const getRetroArchOptions = (languageConfig) => {
+			const options = [
+				{ name: "user_language", value: languageConfig.retroarch, default: languageConfig.retroarch, isString: false }
+			];
+			if (shouldUseVideoFilter()) options.push({ name: "video_filter", value: videoFilterPath, default: videoFilterPath, isString: true });
+			return options;
+		};
+		const syncVideoFilter = () => {
+			const emulator = window.EJS_emulator;
+			if (!emulator) return;
+			emulator.config.retroarchOpts = getRetroArchOptions(getLanguageConfig(activeLanguageValue));
+			emulator.retroarchOpts = emulator.config.retroarchOpts;
+			if (shouldUseVideoFilter()) {
+				emulator.settings.video_filter = videoFilterPath;
+			} else {
+				delete emulator.settings.video_filter;
+			}
+			emulator.saveSettings();
+			const manager = emulator.gameManager;
+			if (manager && manager.writeFile && manager.getRetroArchCfg) {
+				manager.writeFile("/home/web_user/.config/retroarch/retroarch.cfg", manager.getRetroArchCfg());
+			}
+		};
+		languageSelect.value = savedLanguage;
+		let activeLanguageValue = languageSelect.value;
+		languageSelect.querySelector('option[value="auto"]').textContent = selectedLanguageConfig.autoText;
+		Object.entries(languageOptionText).forEach(([value, text]) => {
+			languageSelect.querySelector(`option[value="${value}"]`).textContent = text;
+		});
+		languageSelect.addEventListener("change", () => {
+			if (languageSelect.value === activeLanguageValue) return;
+			const gameIsRunning = window.pgmgameGameRunning === true && window.EJS_emulator && window.EJS_emulator.gameManager;
+			if (gameIsRunning && !window.confirm(selectedLanguageConfig.restartText)) {
+				languageSelect.value = activeLanguageValue;
+				return;
+			}
+			activeLanguageValue = languageSelect.value;
+			const nextLanguageConfig = getLanguageConfig(activeLanguageValue);
+			localStorage.setItem("pgmgame-language", languageSelect.value);
+			if (window.EJS_emulator) {
+				window.EJS_emulator.config.language = nextLanguageConfig.ejs;
+				window.EJS_emulator.config.retroarchOpts = getRetroArchOptions(nextLanguageConfig);
+				window.EJS_emulator.retroarchOpts = window.EJS_emulator.config.retroarchOpts;
+				window.EJS_emulator.settings.user_language = nextLanguageConfig.retroarch;
+				syncVideoFilter();
+				window.EJS_emulator.saveSettings();
+				if (gameIsRunning) {
+					window.EJS_emulator.gameManager.writeFile("/home/web_user/.config/retroarch/retroarch.cfg", window.EJS_emulator.gameManager.getRetroArchCfg());
+					window.EJS_emulator.gameManager.restart();
+				}
+			}
+		});
+		const cardModal = document.getElementById("pgmgame-card-modal");
+		const cardSlot = document.getElementById("pgmgame-card-slot");
+		const cardText = document.getElementById("pgmgame-card-text");
+		const cardStatus = document.getElementById("pgmgame-card-status");
+		const cardVideo = document.getElementById("pgmgame-card-video");
+		const cardSlotButtons = Array.from(document.querySelectorAll(".pgmgame-card-slot-btn"));
+		let cardScanStream = null;
+		let cardScanFrame = 0;
+		const setCardStatus = (message, isError = false) => {
+			cardStatus.textContent = message;
+			cardStatus.style.color = isError ? "#ffb3b3" : "#d6ffd6";
+		};
+		const stopCardScan = () => {
+			cardScanFrame++;
+			if (cardScanStream) {
+				cardScanStream.getTracks().forEach((track) => track.stop());
+				cardScanStream = null;
+			}
+			cardVideo.pause();
+			cardVideo.srcObject = null;
+			cardVideo.style.display = "none";
+		};
+		const base64ToBytes = (base64) => {
+			const clean = base64.replace(/\s+/g, "");
+			const raw = atob(clean);
+			const bytes = new Uint8Array(raw.length);
+			for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+			return bytes;
+		};
+		const decodePgm2CardText = (text) => {
+			const value = text.trim();
+			if (!value.toUpperCase().startsWith("PGM2:")) throw new Error("二维码内容必须以 PGM2: 开头");
+			const bytes = base64ToBytes(value.slice(value.indexOf(":") + 1));
+			if (bytes.length !== 256 && bytes.length !== 264) throw new Error(`卡片长度不对：${bytes.length} 字节，应为 256 或 264`);
+			if (bytes.length === 264) return bytes;
+			const pg2 = new Uint8Array(264);
+			pg2.set(bytes);
+			pg2.fill(0xff, 256);
+			pg2[260] = 0x07;
+			return pg2;
+		};
+		const getCardFilePath = (slot) => `/data/saves/fbneo/pgm2_memcards/${activeGame.id}_p${slot}_default.pg2`;
+		const getErrorMessage = (error) => {
+			const message = error && (error.message || String(error)) || "操作失败";
+			if (/null is not an object/i.test(message)) return "模拟器文件系统还没准备好，请等游戏完全载入后再导入";
+			return message;
+		};
+		const ensureFsDir = (fs, path) => {
+			const parts = path.split("/");
+			let current = "";
+			for (let i = 1; i < parts.length - 1; i++) {
+				current += "/" + parts[i];
+				try { fs.mkdir(current); } catch (e) {}
+			}
+		};
+		const writePgm2Card = (bytes, source) => {
+			const slot = Number(cardSlot && cardSlot.value || 1);
+			const manager = window.EJS_emulator && window.EJS_emulator.gameManager;
+			if (!manager || !manager.FS) throw new Error("模拟器还没准备好，等游戏载入后再导入卡片");
+			if (!manager.FS.writeFile) throw new Error("模拟器文件系统还没准备好，请稍后再试");
+			const path = getCardFilePath(slot);
+			const saveAndInsert = () => {
+				ensureFsDir(manager.FS, path);
+				manager.FS.writeFile(path, bytes);
+				if (manager.FS.syncfs) manager.FS.syncfs(false, () => {});
+				if (window.pgmgameGameRunning && manager.setVariable) manager.setVariable(`fbneo-pgm2-ic-p${slot}`, "default");
+				setCardStatus(`已从${source}导入 P${slot}：${bytes.length} 字节。若当前画面未识别，请回到读卡画面或点冷启动。`);
+			};
+			if (window.pgmgameGameRunning && manager.setVariable) {
+				manager.setVariable(`fbneo-pgm2-ic-p${slot}`, "empty");
+				setTimeout(saveAndInsert, 120);
+				return;
+			}
+			saveAndInsert();
+		};
+		const importCardText = (text, source = "二维码") => {
+			const bytes = decodePgm2CardText(text);
+			writePgm2Card(bytes, source);
+		};
+		const importCardFile = async (file) => {
+			const bytes = new Uint8Array(await file.arrayBuffer());
+			if (bytes.length !== 256 && bytes.length !== 264) throw new Error(`文件长度不对：${bytes.length} 字节，应为 256 或 264`);
+			if (bytes.length === 264) {
+				writePgm2Card(bytes, "文件");
+				return;
+			}
+			const pg2 = new Uint8Array(264);
+			pg2.set(bytes);
+			pg2.fill(0xff, 256);
+			pg2[260] = 0x07;
+			writePgm2Card(pg2, "文件");
+		};
+		const decodeQrFromImage = async (file) => {
+			const image = await createImageBitmap(file);
+			const canvas = document.createElement("canvas");
+			canvas.width = image.width;
+			canvas.height = image.height;
+			const context = canvas.getContext("2d", { willReadFrequently: true });
+			context.drawImage(image, 0, 0);
+			image.close && image.close();
+			const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+			const result = window.jsQR && window.jsQR(imageData.data, imageData.width, imageData.height);
+			if (!result || !result.data) throw new Error("没有识别到二维码");
+			return result.data;
+		};
+		const startCardScan = async () => {
+			if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("当前浏览器不支持摄像头扫码");
+			stopCardScan();
+			const scanId = ++cardScanFrame;
+			cardScanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+			cardVideo.srcObject = cardScanStream;
+			cardVideo.style.display = "block";
+			await cardVideo.play();
+			const canvas = document.createElement("canvas");
+			const context = canvas.getContext("2d", { willReadFrequently: true });
+			const tick = () => {
+				if (scanId !== cardScanFrame || !cardScanStream) return;
+				if (cardVideo.readyState >= 2 && cardVideo.videoWidth && cardVideo.videoHeight) {
+					canvas.width = cardVideo.videoWidth;
+					canvas.height = cardVideo.videoHeight;
+					context.drawImage(cardVideo, 0, 0, canvas.width, canvas.height);
+					const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+					const result = window.jsQR && window.jsQR(imageData.data, imageData.width, imageData.height);
+					if (result && result.data) {
+						try {
+							cardText.value = result.data;
+							importCardText(result.data, "扫码");
+							stopCardScan();
+							return;
+						} catch (e) {
+							setCardStatus(getErrorMessage(e), true);
+						}
+					}
+				}
+				requestAnimationFrame(tick);
+			};
+			setCardStatus("摄像头已打开，请对准二维码。");
+			requestAnimationFrame(tick);
+		};
+		document.getElementById("pgmgame-card-close").addEventListener("click", () => {
+			stopCardScan();
+			cardModal.hidden = true;
+		});
+		cardSlotButtons.forEach((button) => {
+			button.addEventListener("click", () => {
+				cardSlot.value = button.dataset.slot;
+				cardSlotButtons.forEach((item) => item.classList.toggle("active", item === button));
+			});
+		});
+		document.getElementById("pgmgame-card-stop").addEventListener("click", () => {
+			stopCardScan();
+			setCardStatus("已停止扫码。");
+		});
+		document.getElementById("pgmgame-card-scan").addEventListener("click", async () => {
+			try { await startCardScan(); } catch (e) { setCardStatus(getErrorMessage(e), true); }
+		});
+		document.getElementById("pgmgame-card-import-text").addEventListener("click", () => {
+			try { importCardText(cardText.value, "文本"); } catch (e) { setCardStatus(getErrorMessage(e), true); }
+		});
+		document.getElementById("pgmgame-card-image").addEventListener("change", async (event) => {
+			const file = event.target.files && event.target.files[0];
+			if (!file) return;
+			try {
+				const text = await decodeQrFromImage(file);
+				cardText.value = text;
+				importCardText(text, "二维码照片");
+			} catch (e) {
+				setCardStatus(getErrorMessage(e), true);
+			} finally {
+				event.target.value = "";
+			}
+		});
+		document.getElementById("pgmgame-card-file").addEventListener("change", async (event) => {
+			const file = event.target.files && event.target.files[0];
+			if (!file) return;
+			try { await importCardFile(file); } catch (e) { setCardStatus(getErrorMessage(e), true); } finally { event.target.value = ""; }
+		});
+		document.getElementById("pgmgame-card-hard-reset").addEventListener("click", () => {
+			const manager = window.EJS_emulator && window.EJS_emulator.gameManager;
+			if (!manager || !manager.restart) {
+				setCardStatus("模拟器还没准备好。", true);
+				return;
+			}
+			manager.restart();
+			setCardStatus("已执行冷启动。");
+		});
+		window.EJS_player = "#game";
+		window.EJS_core = "fbneo";
+		window.EJS_pathtodata = basePath + "data/";
+		window.EJS_language = selectedLanguageConfig.ejs;
+		window.EJS_EmulatorOptions = getRetroArchOptions(selectedLanguageConfig);
+		window.EJS_externalFiles = {
+			[videoFilterPath]: `${basePath}filters/video/Phosphor2x.filt?v=${siteVersion}`
+		};
+		window.EJS_controlScheme = "pgmgame";
+		window.EJS_defaultControls = {
+			0: {
+				0: { value: "x", value2: "BUTTON_2" },
+				1: { value: "s", value2: "BUTTON_4" },
+				2: { value: "", value2: "SELECT" },
+				3: { value: "", value2: "START" },
+				4: { value: "up arrow", value2: "DPAD_UP" },
+				5: { value: "down arrow", value2: "DPAD_DOWN" },
+				6: { value: "left arrow", value2: "DPAD_LEFT" },
+				7: { value: "right arrow", value2: "DPAD_RIGHT" },
+				8: { value: "z", value2: "BUTTON_1" },
+				9: { value: "a", value2: "BUTTON_3" },
+				24: { value: "" },
+				25: { value: "" },
+				26: { value: "" },
+				27: { value: "" },
+				28: { value: "" },
+				29: { value: "" }
+			},
+			1: {},
+			2: {},
+			3: {}
+		};
+		window.EJS_VirtualGamepadSettings = [
+			{ type: "zone", id: "dpad", location: "left", left: "50%", top: "50%", joystickInput: false, inputValues: [4, 5, 6, 7] },
+			{ type: "button", text: "C", id: "c", location: "right", left: 0, top: 0, bold: true, input_value: 1 },
+			{ type: "button", text: "D", id: "d", location: "right", left: 90, top: 0, bold: true, input_value: 9 },
+			{ type: "button", text: "A", id: "a", location: "right", left: 0, top: 90, bold: true, input_value: 0 },
+			{ type: "button", text: "B", id: "b", location: "right", left: 90, top: 90, bold: true, input_value: 8 },
+			{ type: "button", text: "COIN", id: "coin", location: "center", left: 0, fontSize: 18, block: true, input_value: 2 },
+			{ type: "button", text: "开始", id: "start", location: "center", left: 100, fontSize: 18, block: true, input_value: 3 }
+		];
+		const hiddenEmulatorButton = { visible: false };
+		window.EJS_Buttons = {
+			playPause: hiddenEmulatorButton,
+			restart: hiddenEmulatorButton,
+			mute: hiddenEmulatorButton,
+			fullscreen: hiddenEmulatorButton,
+			saveState: hiddenEmulatorButton,
+			loadState: hiddenEmulatorButton,
+			screenRecord: hiddenEmulatorButton,
+			gamepad: hiddenEmulatorButton,
+			cheat: hiddenEmulatorButton,
+			volume: hiddenEmulatorButton,
+			saveSavFiles: hiddenEmulatorButton,
+			loadSavFiles: hiddenEmulatorButton,
+			quickSave: hiddenEmulatorButton,
+			quickLoad: hiddenEmulatorButton,
+			screenshot: hiddenEmulatorButton,
+			cacheManager: hiddenEmulatorButton,
+			exitEmulation: hiddenEmulatorButton,
+			netplay: hiddenEmulatorButton,
+			diskButton: hiddenEmulatorButton,
+			settings: hiddenEmulatorButton,
+			contextMenu: hiddenEmulatorButton,
+			rightClick: false
+		};
+		window.EJS_startOnLoaded = true;
+		window.EJS_cacheConfig = {
+			enabled: true,
+			cacheMaxSizeMB: 1024,
+			cacheMaxAgeMins: 43200
+		};
+		window.EJS_disableAutoUnload = true;
+		window.EJS_DEBUG_XX = true;
+		const startGame = async (game) => {
+			if (document.body.classList.contains("pgmgame-loading-game")) return;
+			activeGame = game;
+			localStorage.setItem("pgmgame-orientation", orientationSelect ? orientationSelect.value : "landscape");
+			localStorage.setItem("pgmgame-video-filter", filterSelect ? filterSelect.value : "off");
+			document.body.classList.add("pgmgame-loading-game");
+			document.body.classList.remove("pgmgame-selecting");
+			document.body.classList.add("pgmgame-playing");
+			setLoadingText(`${game.title} loading...`);
+			try {
+				applyGameConfig(game, await prepareGameUrl(game));
+				loadEmulator();
+			} catch (error) {
+				document.body.classList.add("pgmgame-selecting");
+				document.body.classList.remove("pgmgame-playing");
+				setLoadingText("pgmgame loading...");
+				alert(`加载 ${game.title} 失败：${error.message || error}`);
+			} finally {
+				document.body.classList.remove("pgmgame-loading-game");
+			}
+		};
+		const renderGameHome = () => {
+			const list = document.getElementById("pgmgame-game-list");
+			if (!list) return;
+			document.getElementById("pgmgame-home-language")?.appendChild(languageSelect.parentElement);
+			const version = document.getElementById("pgmgame-home-version");
+			if (version) version.textContent = `版本 ${siteVersion}`;
+			list.textContent = "";
+			gameCatalog.forEach((game) => {
+				const button = document.createElement("button");
+				button.type = "button";
+				button.className = "pgmgame-game-card";
+				button.dataset.game = game.id;
+				button.innerHTML = `
+					<svg viewBox="0 0 400 300" role="img" aria-label="${game.title}">
+						<defs>
+							<linearGradient id="g-${game.id}" x1="0" y1="0" x2="1" y2="1">
+								<stop offset="0" stop-color="${game.accent}"/>
+								<stop offset="1" stop-color="#111"/>
+							</linearGradient>
+						</defs>
+						<rect width="400" height="300" fill="url(#g-${game.id})"/>
+						<circle cx="320" cy="58" r="86" fill="rgba(255,255,255,.16)"/>
+						<circle cx="78" cy="234" r="124" fill="rgba(0,0,0,.24)"/>
+						<path d="M55 205 C120 70, 235 92, 346 32" stroke="rgba(255,255,255,.52)" stroke-width="18" fill="none"/>
+						<text x="28" y="154" fill="#fff" font-size="54" font-weight="900">${game.subtitle}</text>
+						<text x="30" y="206" fill="rgba(255,255,255,.82)" font-size="24" font-weight="800">点击开始</text>
+					</svg>
+					<span class="pgmgame-game-card-title"></span>
+				`;
+				button.querySelector(".pgmgame-game-card-title").textContent = game.title;
+				button.addEventListener("click", () => startGame(game));
+				list.appendChild(button);
+			});
+		};
+		const loadEmulator = () => {
+			if (document.getElementById("pgmgame-loader-script")) return;
+			const loaderScript = document.createElement("script");
+			loaderScript.id = "pgmgame-loader-script";
+			loaderScript.src = `data/loader.js?v=${window.PGMGAME_VERSION}`;
+			document.body.appendChild(loaderScript);
+		};
+		const installNativeMenuBlocker = () => {
+			if (!document.getElementById("pgmgame-native-menu-blocker")) {
+				const style = document.createElement("style");
+				style.id = "pgmgame-native-menu-blocker";
+				style.textContent = `
+					.ejs_parent .ejs_menu_bar,
+					.ejs_parent .ejs_menu_button,
+					.ejs_parent .ejs_context_menu,
+					.ejs_parent .ejs_settings_parent,
+					.ejs_parent .ejs_virtualGamepad_open {
+						display: none !important;
+						visibility: hidden !important;
+						opacity: 0 !important;
+						pointer-events: none !important;
+					}
+				`;
+				document.head.appendChild(style);
+			}
+			document.querySelectorAll(".ejs_menu_bar, .ejs_menu_button, .ejs_context_menu, .ejs_settings_parent, .ejs_virtualGamepad_open").forEach((element) => {
+				element.style.setProperty("display", "none", "important");
+				element.style.setProperty("visibility", "hidden", "important");
+				element.style.setProperty("opacity", "0", "important");
+				element.style.setProperty("pointer-events", "none", "important");
+			});
+			if (window.EJS_emulator && window.EJS_emulator.menu) {
+				window.EJS_emulator.menu.open = () => {};
+				window.EJS_emulator.menu.toggle = () => {};
+				window.EJS_emulator.menu.close();
+			}
+		};
+		const nativeMenuObserver = new MutationObserver(installNativeMenuBlocker);
+		nativeMenuObserver.observe(document.documentElement, { childList: true, subtree: true });
+		const arcadeKeyMap = {
+			Digit5: { player: 0, input: 2 },
+			Numpad5: { player: 0, input: 2 },
+			Digit1: { player: 0, input: 3 },
+			Numpad1: { player: 0, input: 3 },
+			Digit2: { player: 1, input: 3 },
+			Numpad2: { player: 1, input: 3 },
+			Digit3: { player: 2, input: 3 },
+			Numpad3: { player: 2, input: 3 },
+			Digit4: { player: 3, input: 3 },
+			Numpad4: { player: 3, input: 3 }
+		};
+		const installArcadeKeyboard = () => {
+			const manager = window.EJS_emulator && window.EJS_emulator.gameManager;
+			if (!window.EJS_emulator) return;
+			if (window.EJS_emulator.controls) {
+				[0, 1, 2, 3].forEach((player) => {
+					[24, 25, 26, 27, 28, 29].forEach((input) => {
+						if (window.EJS_emulator.controls[player]) delete window.EJS_emulator.controls[player][input];
+					});
+				});
+			}
+			if (manager && manager.functions && manager.functions.restart && !window.pgmgameRestartPatched) {
+				window.pgmgameRestartPatched = true;
+			}
+		};
+		const handleArcadeKeyboard = (event) => {
+			if (event.target && /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) return;
+			const manager = window.EJS_emulator && window.EJS_emulator.gameManager;
+			if (event.code === "F3") {
+				event.preventDefault();
+				event.stopImmediatePropagation();
+				if (event.type === "keydown" && !event.repeat && manager && manager.restart) manager.restart();
+				return;
+			}
+			const mapping = arcadeKeyMap[event.code];
+			if (!mapping) return;
+			event.preventDefault();
+			event.stopImmediatePropagation();
+			if (event.type === "keydown" && event.repeat) return;
+			if (!manager || !manager.simulateInput) return;
+			manager.simulateInput(mapping.player, mapping.input, event.type === "keydown" ? 1 : 0);
+		};
+		document.addEventListener("keydown", handleArcadeKeyboard, true);
+		document.addEventListener("keyup", handleArcadeKeyboard, true);
+		window.EJS_ready = function () {
+			installNativeMenuBlocker();
+			installArcadeKeyboard();
+			syncVideoFilter();
+			if (isFullscreenMode()) document.body.classList.add("pgmgame-pseudo-fullscreen");
+			removeLoading();
+		};
+		window.EJS_onGameStart = function () {
+			installNativeMenuBlocker();
+			installArcadeKeyboard();
+			syncVideoFilter();
+			removeLoading();
+			window.pgmgameGameRunning = true;
+			const root = document.querySelector(".ejs_parent");
+			const controls = document.querySelector(".ejs_virtualGamepad_parent");
+			const stage = document.getElementById("pgmgame-stage");
+			if (!root || !controls || document.getElementById("pgmgame-toolbar")) return;
+
+			stage.appendChild(controls);
+			const toolbar = document.createElement("div");
+			toolbar.id = "pgmgame-toolbar";
+			document.body.appendChild(toolbar);
+			const controlTargets = {
+				dpad: controls.querySelector(".ejs_dpad_main"),
+				c: controls.querySelector(".ejs_virtualGamepad_button.b_c"),
+				d: controls.querySelector(".ejs_virtualGamepad_button.b_d"),
+				a: controls.querySelector(".ejs_virtualGamepad_button.b_a"),
+				b: controls.querySelector(".ejs_virtualGamepad_button.b_b"),
+				coin: controls.querySelector(".ejs_virtualGamepad_button.b_coin"),
+				start: controls.querySelector(".ejs_virtualGamepad_button.b_start")
+			};
+			const layoutStorageKey = "pgmgame-controls-layout-v2";
+			const defaultControlLayout = {
+				dpad: { x: 0, y: 0, scale: 1 },
+				c: { x: 0, y: 0, scale: 1 },
+				d: { x: 0, y: 0, scale: 1 },
+				a: { x: 0, y: 0, scale: 1 },
+				b: { x: 0, y: 0, scale: 1 },
+				coin: { x: 0, y: 0, scale: 1 },
+				start: { x: 0, y: 0, scale: 1 }
+			};
+			let controlLayout = (() => {
+				try {
+					return { ...defaultControlLayout, ...JSON.parse(localStorage.getItem(layoutStorageKey) || "{}") };
+				} catch (e) {
+					return { ...defaultControlLayout };
+				}
+			})();
+			let layoutEditing = false;
+			let layoutDrag = null;
+			const normalizeLayoutItem = (item) => ({
+				x: Math.max(-1000, Math.min(1000, Number(item && item.x) || 0)),
+				y: Math.max(-1000, Math.min(1000, Number(item && item.y) || 0)),
+				scale: Math.max(.55, Math.min(1.85, Number(item && item.scale) || 1))
+			});
+			const saveControlLayout = () => {
+				localStorage.setItem(layoutStorageKey, JSON.stringify(controlLayout));
+			};
+			const applyControlLayout = () => {
+				Object.entries(controlTargets).forEach(([key, element]) => {
+					if (!element) return;
+					const item = normalizeLayoutItem(controlLayout[key]);
+					controlLayout[key] = item;
+					element.classList.add("pgmgame-layout-target");
+					element.style.setProperty("--pgm-layout-x", `${item.x}px`);
+					element.style.setProperty("--pgm-layout-y", `${item.y}px`);
+					element.style.setProperty("--pgm-layout-scale", item.scale);
+				});
+			};
+			const setLayoutEditing = (enabled) => {
+				layoutEditing = enabled;
+				document.body.classList.toggle("pgmgame-layout-editing", enabled);
+				toolbar.classList.toggle("pgmgame-layout-editing-toolbar", enabled);
+				if (resetLayoutButton) resetLayoutButton.hidden = !enabled;
+				layoutButton.textContent = enabled ? "完成" : "布局";
+			};
+			const resetControlLayout = () => {
+				controlLayout = JSON.parse(JSON.stringify(defaultControlLayout));
+				localStorage.removeItem(layoutStorageKey);
+				applyControlLayout();
+				setLayoutEditing(false);
+			};
+			const endLayoutDrag = () => {
+				if (!layoutDrag) return;
+				saveControlLayout();
+				layoutDrag = null;
+			};
+			const moveLayoutDrag = (event) => {
+				if (!layoutDrag) return;
+				event.preventDefault();
+				const item = normalizeLayoutItem(layoutDrag.startItem);
+				if (layoutDrag.mode === "move") {
+					item.x += event.clientX - layoutDrag.startX;
+					item.y += event.clientY - layoutDrag.startY;
+				} else {
+					const delta = Math.max(event.clientX - layoutDrag.startX, event.clientY - layoutDrag.startY);
+					item.scale += delta / 160;
+				}
+				controlLayout[layoutDrag.key] = normalizeLayoutItem(item);
+				applyControlLayout();
+			};
+			const startLayoutDrag = (event, key, mode) => {
+				if (!layoutEditing) return;
+				event.preventDefault();
+				event.stopPropagation();
+				if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+				const pointerEvent = event;
+				layoutDrag = {
+					key,
+					mode,
+					startX: pointerEvent.clientX,
+					startY: pointerEvent.clientY,
+					startItem: { ...normalizeLayoutItem(controlLayout[key]) }
+				};
+			};
+			const blockLayoutInput = (event) => {
+				if (!layoutEditing || !event.target.closest(".pgmgame-layout-target")) return;
+				event.preventDefault();
+				event.stopPropagation();
+				if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+			};
+			Object.entries(controlTargets).forEach(([key, element]) => {
+				if (!element) return;
+				const handle = document.createElement("div");
+				handle.className = "pgmgame-layout-handle";
+				handle.setAttribute("aria-hidden", "true");
+				element.appendChild(handle);
+				element.addEventListener("pointerdown", (event) => startLayoutDrag(event, key, "move"));
+				handle.addEventListener("pointerdown", (event) => startLayoutDrag(event, key, "scale"));
+			});
+			document.addEventListener("pointermove", moveLayoutDrag);
+			document.addEventListener("pointerup", endLayoutDrag);
+			document.addEventListener("pointercancel", endLayoutDrag);
+			["touchstart", "touchmove", "touchend", "touchcancel", "click"].forEach((eventName) => {
+				controls.addEventListener(eventName, blockLayoutInput, true);
+			});
+			applyControlLayout();
+
+			const menuToggle = document.createElement("button");
+			menuToggle.id = "pgmgame-toolbar-menu";
+			menuToggle.type = "button";
+			menuToggle.textContent = "菜单";
+			toolbar.appendChild(menuToggle);
+
+			const toggle = document.createElement("button");
+			toggle.id = "pgmgame-controls-toggle";
+			toggle.type = "button";
+			toggle.textContent = "隐藏";
+			toolbar.appendChild(toggle);
+			const layoutButton = document.createElement("button");
+			layoutButton.id = "pgmgame-layout-toggle";
+			layoutButton.type = "button";
+			layoutButton.textContent = "布局";
+			toolbar.appendChild(layoutButton);
+			const resetLayoutButton = document.createElement("button");
+			resetLayoutButton.id = "pgmgame-layout-reset";
+			resetLayoutButton.type = "button";
+			resetLayoutButton.textContent = "复位";
+			resetLayoutButton.hidden = true;
+			toolbar.appendChild(resetLayoutButton);
+			const cardButton = document.createElement("button");
+			cardButton.id = "pgmgame-card-toggle";
+			cardButton.type = "button";
+			cardButton.textContent = "卡片";
+			toolbar.appendChild(cardButton);
+			cardButton.addEventListener("click", () => {
+				cardModal.hidden = false;
+				if (cardSlot && cardSlot.focus) cardSlot.focus();
+				setCardStatus("选择卡槽后扫码、载入二维码照片，或直接上传 .bin/.pg2。");
+			});
+			const updateToolbarPosition = () => {
+				const fullscreenMode = isFullscreenMode();
+				toolbar.classList.toggle("pgmgame-toolbar-fullscreen-edge", fullscreenMode);
+				const mobileFullscreenMode = fullscreenMode && isMobileMode && isPortraitMode();
+				toolbar.classList.toggle("pgmgame-toolbar-mobile-fullscreen", mobileFullscreenMode);
+				if (!mobileFullscreenMode) {
+					toolbar.classList.remove("pgmgame-toolbar-expanded");
+					menuToggle.textContent = "菜单";
+				}
+				if (fullscreenMode) {
+					toolbar.style.left = "";
+					toolbar.style.right = "";
+					toolbar.style.top = "";
+					toolbar.style.bottom = "";
+					toolbar.style.transform = "";
+					toolbar.style.width = "";
+					if (isMobileMode && isPortraitMode()) {
+						toolbar.style.position = "fixed";
+						toolbar.style.left = "auto";
+						toolbar.style.right = "max(8px, env(safe-area-inset-right))";
+						toolbar.style.top = "calc(max(54px, env(safe-area-inset-top)) + 8px)";
+						toolbar.style.bottom = "auto";
+						toolbar.style.width = "auto";
+						toolbar.style.transform = "none";
+						return;
+					}
+					return;
+				}
+				const canvas = root.querySelector("canvas");
+				const canvasRect = canvas ? canvas.getBoundingClientRect() : null;
+				if (!canvasRect) return;
+				const toolbarRect = toolbar.getBoundingClientRect();
+				const gap = 12;
+				toolbar.style.position = "fixed";
+				if (isMobileMode && isPortraitMode()) {
+					toolbar.style.left = "50%";
+					toolbar.style.right = "auto";
+					toolbar.style.top = "auto";
+					toolbar.style.bottom = "calc(max(286px, 34dvh) + env(safe-area-inset-bottom))";
+					toolbar.style.width = "min(96vw, 430px)";
+					toolbar.style.transform = "translateX(-50%)";
+					return;
+				}
+				const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+				const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+				const rightSideSpace = Math.max(0, viewportWidth - canvasRect.right - gap * 2);
+				toolbar.style.bottom = "auto";
+				toolbar.style.right = "auto";
+				toolbar.style.transform = "none";
+				if (rightSideSpace >= 176) {
+					toolbar.style.width = `${Math.min(430, Math.floor(rightSideSpace))}px`;
+					toolbar.style.left = `${Math.round(canvasRect.right + gap)}px`;
+					toolbar.style.top = `${Math.round(canvasRect.bottom - toolbarRect.height - gap)}px`;
+					return;
+				}
+				const bottomSpace = Math.max(0, viewportHeight - canvasRect.bottom - gap * 2);
+				toolbar.style.width = "min(74vw, 430px)";
+				if (bottomSpace >= toolbarRect.height + gap) {
+					toolbar.style.left = `${Math.round(canvasRect.left + canvasRect.width / 2)}px`;
+					toolbar.style.top = `${Math.round(canvasRect.bottom + gap)}px`;
+					toolbar.style.transform = "translateX(-50%)";
+					return;
+				}
+				toolbar.style.left = `${Math.round(Math.max(gap, canvasRect.left + gap))}px`;
+				toolbar.style.top = `${Math.round(Math.max(gap, canvasRect.bottom + gap))}px`;
+			};
+			const disableNativeMenu = () => {
+				installNativeMenuBlocker();
+			};
+			requestAnimationFrame(() => {
+				disableNativeMenu();
+				updateToolbarPosition();
+				requestAnimationFrame(() => {
+					disableNativeMenu();
+					updateToolbarPosition();
+				});
+			});
+
+			const isStageFullscreen = () => isFullscreenMode();
+			const orientationTip = document.getElementById("pgmgame-orientation-tip");
+			const lockLandscape = async () => {
+				try {
+					if (screen.orientation && screen.orientation.lock) {
+						await screen.orientation.lock("landscape");
+						orientationTip.hidden = true;
+						return;
+					}
+				} catch (e) {}
+				orientationTip.hidden = false;
+				setTimeout(() => {
+					orientationTip.hidden = true;
+				}, 3200);
+			};
+			const unlockOrientation = () => {
+				try {
+					if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
+				} catch (e) {}
+				orientationTip.hidden = true;
+			};
+			const syncFullscreenLabel = () => {
+				requestAnimationFrame(updateToolbarPosition);
+			};
+			const enterPseudoFullscreen = () => {
+				document.body.classList.add("pgmgame-pseudo-fullscreen");
+				window.scrollTo(0, 1);
+				lockLandscape();
+				syncVideoFilter();
+				updateToolbarPosition();
+				syncFullscreenLabel();
+			};
+			const exitPseudoFullscreen = () => {
+				document.body.classList.remove("pgmgame-pseudo-fullscreen");
+				unlockOrientation();
+				window.scrollTo(0, 0);
+				syncVideoFilter();
+				updateToolbarPosition();
+				syncFullscreenLabel();
+			};
+			const togglePseudoFullscreen = () => {
+				if (document.body.classList.contains("pgmgame-pseudo-fullscreen")) {
+					exitPseudoFullscreen();
+				} else {
+					enterPseudoFullscreen();
+				}
+			};
+			menuToggle.addEventListener("click", () => {
+				toolbar.classList.toggle("pgmgame-toolbar-expanded");
+				menuToggle.textContent = toolbar.classList.contains("pgmgame-toolbar-expanded") ? "收起" : "菜单";
+			});
+			layoutButton.addEventListener("click", () => {
+				setLayoutEditing(!layoutEditing);
+			});
+			resetLayoutButton.addEventListener("click", () => {
+				resetControlLayout();
+			});
+			document.addEventListener("fullscreenchange", () => {
+				if (document.fullscreenElement || document.webkitFullscreenElement) {
+					document.body.classList.add("pgmgame-pseudo-fullscreen");
+				}
+				if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+					document.body.classList.remove("pgmgame-pseudo-fullscreen");
+					unlockOrientation();
+				}
+				syncVideoFilter();
+				syncFullscreenLabel();
+			});
+			document.addEventListener("webkitfullscreenchange", () => {
+				if (document.fullscreenElement || document.webkitFullscreenElement) {
+					document.body.classList.add("pgmgame-pseudo-fullscreen");
+				}
+				if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+					document.body.classList.remove("pgmgame-pseudo-fullscreen");
+					unlockOrientation();
+				}
+				syncVideoFilter();
+				syncFullscreenLabel();
+			});
+			window.addEventListener("resize", () => {
+				if (isFullscreenMode()) {
+					window.scrollTo(0, 1);
+				}
+				syncVideoFilter();
+				updateToolbarPosition();
+			});
+
+			const setVisible = (visible) => {
+				controls.classList.toggle("pgmgame-controls-hidden", !visible);
+				toggle.textContent = visible ? "隐藏" : "操作";
+				localStorage.setItem("pgmgame-controls-visible", visible ? "1" : "0");
+			};
+			const saved = localStorage.getItem("pgmgame-controls-visible");
+			setVisible(isMobileMode ? true : saved === "1");
+			toggle.addEventListener("click", () => {
+				setVisible(controls.classList.contains("pgmgame-controls-hidden"));
+			});
+		};
+		renderGameHome();
+	</script>
+</body>
+</html>
