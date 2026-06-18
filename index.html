@@ -590,21 +590,19 @@
 		body.pgmgame-landscape.pgmgame-pseudo-fullscreen .pgmgame-rotate-label {
 			visibility: hidden !important;
 		}
-		body.pgmgame-landscape.pgmgame-pseudo-fullscreen .pgmgame-has-rotate-label::after {
-			content: attr(data-pgm-label);
+		#pgmgame-toolbar .pgmgame-has-rotate-label {
+			position: relative;
+		}
+		.pgmgame-label-svg {
 			position: absolute;
-			left: 50%;
-			top: 50%;
-			display: inline-flex;
-			align-items: center;
-			justify-content: center;
-			width: max-content;
-			height: max-content;
-			line-height: 1;
-			white-space: nowrap;
-			transform: translate(-50%, -50%) rotate(90deg) !important;
-			transform-origin: center center !important;
+			inset: 0;
+			display: none;
+			width: 100%;
+			height: 100%;
 			pointer-events: none;
+		}
+		body.pgmgame-landscape.pgmgame-pseudo-fullscreen .pgmgame-label-svg {
+			display: block;
 		}
 		.ejs_virtualGamepad_button {
 			width: var(--pgm-action-size) !important;
@@ -1044,7 +1042,7 @@
 		const basePath = window.location.pathname.endsWith("/")
 			? window.location.pathname
 			: window.location.pathname.slice(0, window.location.pathname.lastIndexOf("/") + 1);
-		const siteVersion = "20260618.26";
+		const siteVersion = "20260618.27";
 		window.PGMGAME_VERSION = siteVersion;
 		const isMobileMode = /android|bb\d+|meego.+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile|opera m(ob|in)i|palm|phone|p(ixi|re)\/|plucker|pocket|psp|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|ipad|playbook|silk/i.test(navigator.userAgent || "")
 			|| (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
@@ -1132,12 +1130,32 @@
 			label.className = "pgmgame-rotate-label";
 			label.textContent = text;
 			element.appendChild(label);
+			const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+			svg.classList.add("pgmgame-label-svg");
+			svg.setAttribute("viewBox", "0 0 100 100");
+			svg.setAttribute("preserveAspectRatio", "none");
+			svg.setAttribute("aria-hidden", "true");
+			const svgText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+			svgText.classList.add("pgmgame-label-svg-text");
+			svgText.setAttribute("x", "50");
+			svgText.setAttribute("y", "50");
+			svgText.setAttribute("text-anchor", "middle");
+			svgText.setAttribute("dominant-baseline", "middle");
+			svgText.setAttribute("transform", "rotate(90 50 50)");
+			svgText.setAttribute("fill", "currentColor");
+			svgText.setAttribute("font-size", "42");
+			svgText.setAttribute("font-weight", "700");
+			svgText.textContent = text;
+			svg.appendChild(svgText);
+			element.appendChild(svg);
 		};
 		const setRotatingLabelText = (element, text) => {
 			const label = element && element.querySelector(".pgmgame-rotate-label");
+			const svgText = element && element.querySelector(".pgmgame-label-svg-text");
 			if (element) element.dataset.pgmLabel = text;
 			if (label) {
 				label.textContent = text;
+				if (svgText) svgText.textContent = text;
 			} else if (element) {
 				element.textContent = text;
 			}
