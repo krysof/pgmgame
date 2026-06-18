@@ -896,37 +896,38 @@
 				bottom: auto !important;
 				margin-left: 0 !important;
 			}
-			body.pgmgame-landscape.pgmgame-pseudo-fullscreen .ejs_virtualGamepad_parent {
-				left: auto !important;
-				top: auto !important;
-				inset: 0 !important;
-				width: 100vw !important;
-				height: 100dvh !important;
-				transform: none !important;
+			body.pgmgame-landscape.pgmgame-pseudo-fullscreen #pgmgame-stage .ejs_virtualGamepad_parent {
+				left: 50% !important;
+				top: 50% !important;
+				width: 100dvh !important;
+				height: 100vw !important;
+				transform: translate(-50%, -50%) rotate(90deg) !important;
+				transform-origin: center center !important;
 			}
 			body.pgmgame-landscape.pgmgame-pseudo-fullscreen #pgmgame-stage .ejs_virtualGamepad_left {
-				left: max(14px, env(safe-area-inset-left)) !important;
+				left: max(14px, env(safe-area-inset-bottom)) !important;
 				right: auto !important;
 				top: auto !important;
-				bottom: max(14px, env(safe-area-inset-bottom)) !important;
+				bottom: max(14px, env(safe-area-inset-left)) !important;
 			}
 			body.pgmgame-landscape.pgmgame-pseudo-fullscreen #pgmgame-stage .ejs_virtualGamepad_right {
 				left: auto !important;
-				right: max(26px, env(safe-area-inset-right)) !important;
+				right: max(26px, env(safe-area-inset-top)) !important;
 				top: auto !important;
-				bottom: max(48px, env(safe-area-inset-bottom)) !important;
+				bottom: max(48px, env(safe-area-inset-right)) !important;
 			}
 			body.pgmgame-landscape.pgmgame-pseudo-fullscreen #pgmgame-stage .ejs_virtualGamepad_bottom {
 				left: 50% !important;
 				right: auto !important;
 				top: auto !important;
-				bottom: max(14px, env(safe-area-inset-bottom)) !important;
+				bottom: max(14px, env(safe-area-inset-left)) !important;
 				margin-left: calc(var(--pgm-center-width) * -.5) !important;
 			}
 			body.pgmgame-landscape.pgmgame-pseudo-fullscreen #pgmgame-toolbar.pgmgame-toolbar-mobile-fullscreen {
 				right: max(8px, env(safe-area-inset-right)) !important;
-				top: calc(max(54px, env(safe-area-inset-top)) + 8px) !important;
+				top: max(8px, env(safe-area-inset-top)) !important;
 				transform: none !important;
+				transform-origin: initial !important;
 			}
 		}
 		@media (min-width: 900px) and (pointer: fine) {
@@ -1025,7 +1026,7 @@
 		const basePath = window.location.pathname.endsWith("/")
 			? window.location.pathname
 			: window.location.pathname.slice(0, window.location.pathname.lastIndexOf("/") + 1);
-		const siteVersion = "20260618.17";
+		const siteVersion = "20260618.18";
 		window.PGMGAME_VERSION = siteVersion;
 		const isMobileMode = /android|bb\d+|meego.+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile|opera m(ob|in)i|palm|phone|p(ixi|re)\/|plucker|pocket|psp|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|ipad|playbook|silk/i.test(navigator.userAgent || "")
 			|| (navigator.maxTouchPoints && navigator.maxTouchPoints > 1)
@@ -1658,9 +1659,9 @@
 			stage.appendChild(controls);
 			const toolbar = document.createElement("div");
 			toolbar.id = "pgmgame-toolbar";
-			document.body.appendChild(toolbar);
+			stage.appendChild(toolbar);
 			const controlTargets = {
-				dpad: controls.querySelector(".ejs_dpad_main"),
+				dpad: controls.querySelector(".cs_pgmgame.b_dpad"),
 				c: controls.querySelector(".ejs_virtualGamepad_button.b_c"),
 				d: controls.querySelector(".ejs_virtualGamepad_button.b_d"),
 				a: controls.querySelector(".ejs_virtualGamepad_button.b_a"),
@@ -1846,15 +1847,19 @@
 				saveControlLayout();
 				layoutDrag = null;
 			};
+			const getLayoutPointerPoint = (event) => {
+				return { x: event.clientX, y: event.clientY };
+			};
 			const moveLayoutDrag = (event) => {
 				if (!layoutDrag) return;
 				event.preventDefault();
 				const item = normalizeLayoutItem(layoutDrag.startItem);
+				const point = getLayoutPointerPoint(event);
 				if (layoutDrag.mode === "move") {
-					item.x += event.clientX - layoutDrag.startX;
-					item.y += event.clientY - layoutDrag.startY;
+					item.x += point.x - layoutDrag.startX;
+					item.y += point.y - layoutDrag.startY;
 				} else {
-					const delta = Math.max(event.clientX - layoutDrag.startX, event.clientY - layoutDrag.startY);
+					const delta = Math.max(point.x - layoutDrag.startX, point.y - layoutDrag.startY);
 					item.scale += delta / 160;
 				}
 				controlLayout[layoutDrag.key] = normalizeLayoutItem(item);
@@ -1865,12 +1870,15 @@
 				event.preventDefault();
 				event.stopPropagation();
 				if (event.stopImmediatePropagation) event.stopImmediatePropagation();
-				const pointerEvent = event;
+				if (event.currentTarget && event.currentTarget.setPointerCapture && event.pointerId != null) {
+					try { event.currentTarget.setPointerCapture(event.pointerId); } catch (e) {}
+				}
+				const point = getLayoutPointerPoint(event);
 				layoutDrag = {
 					key,
 					mode,
-					startX: pointerEvent.clientX,
-					startY: pointerEvent.clientY,
+					startX: point.x,
+					startY: point.y,
 					startItem: { ...normalizeLayoutItem(controlLayout[key]) }
 				};
 			};
@@ -1886,9 +1894,16 @@
 				handle.className = "pgmgame-layout-handle";
 				handle.setAttribute("aria-hidden", "true");
 				element.appendChild(handle);
-				element.addEventListener("pointerdown", (event) => startLayoutDrag(event, key, "move"));
-				handle.addEventListener("pointerdown", (event) => startLayoutDrag(event, key, "scale"));
+				handle.addEventListener("pointerdown", (event) => startLayoutDrag(event, key, "scale"), true);
 			});
+			document.addEventListener("pointerdown", (event) => {
+				if (!layoutEditing) return;
+				const handle = event.target.closest(".pgmgame-layout-handle");
+				if (handle) return;
+				const entry = Object.entries(controlTargets).find(([, element]) => element && element.contains(event.target));
+				if (!entry) return;
+				startLayoutDrag(event, entry[0], "move");
+			}, true);
 			document.addEventListener("pointermove", moveLayoutDrag);
 			document.addEventListener("pointerup", endLayoutDrag);
 			document.addEventListener("pointercancel", endLayoutDrag);
@@ -1945,7 +1960,7 @@
 				const fullscreenMode = isFullscreenMode();
 				toolbar.classList.toggle("pgmgame-toolbar-fullscreen-edge", fullscreenMode);
 				const selectedPortraitMode = getSelectedOrientation() === "portrait";
-				const mobileFullscreenMode = fullscreenMode && isMobileMode && selectedPortraitMode;
+				const mobileFullscreenMode = fullscreenMode && isMobileMode;
 				toolbar.classList.toggle("pgmgame-toolbar-mobile-fullscreen", mobileFullscreenMode);
 				if (!mobileFullscreenMode) {
 					toolbar.classList.remove("pgmgame-toolbar-expanded");
@@ -1957,15 +1972,17 @@
 					toolbar.style.top = "";
 					toolbar.style.bottom = "";
 					toolbar.style.transform = "";
+					toolbar.style.transformOrigin = "";
 					toolbar.style.width = "";
-					if (isMobileMode && selectedPortraitMode) {
+					if (isMobileMode) {
 						toolbar.style.position = "fixed";
 						toolbar.style.left = "auto";
 						toolbar.style.right = "max(8px, env(safe-area-inset-right))";
-						toolbar.style.top = "calc(max(54px, env(safe-area-inset-top)) + 8px)";
+						toolbar.style.top = selectedPortraitMode ? "calc(max(54px, env(safe-area-inset-top)) + 8px)" : "max(8px, env(safe-area-inset-top))";
 						toolbar.style.bottom = "auto";
 						toolbar.style.width = "auto";
 						toolbar.style.transform = "none";
+						toolbar.style.transformOrigin = "";
 						return;
 					}
 					return;
