@@ -15,6 +15,7 @@ if (!scriptPath.startsWith("/") && !isAbsoluteUrl(scriptPath)) {
 }
 
 const debug = window.EJS_DEBUG_XX === true;
+const assetVersion = window.PGMGAME_VERSION ? `?v=${encodeURIComponent(window.PGMGAME_VERSION)}` : "";
 
 if (debug) {
     console.log("Script Path:", scriptPath);
@@ -24,7 +25,7 @@ function resolvePath(path) {
     if ("undefined" != typeof EJS_paths && typeof EJS_paths[path] === "string") {
         return EJS_paths[path];
     } else if (path.endsWith("emulator.min.js") || path.endsWith("css")) {
-        return scriptPath + path;
+        return scriptPath + path + assetVersion;
     } else {
         return scriptPath + "src/" + path;
     }
